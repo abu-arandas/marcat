@@ -1,9 +1,15 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '/config/exports.dart';
 
-class AuthController extends GetxController {
-  static AuthController instance = Get.find();
+class AuthNotifier extends Notifier<UserModel?> {
+  @override
+  UserModel? build() {
+    // Initialize the state here if needed
+    return null;
+  }
 
-  UserModel? user;
+  UserModel? get user => state;
 
   Stream<User?> get authStateChanges =>
       FirebaseAuth.instance.authStateChanges();
@@ -16,16 +22,17 @@ class AuthController extends GetxController {
         password: password,
       );
 
-      final userDoc = await FirebaseFirestore.instance
+      final userDoc = await FirebaseFirestore.instance //
           .collection('users')
           .doc(userCredential.user!.uid)
           .get();
 
-      user = UserModel.fromJson(userDoc);
-      update();
-    } on FirebaseException catch (e) {
-      Get.snackbar('Error', e.message ?? 'An error occurred');
-    }
+      if (userDoc.exists) {
+        state = UserModel.fromJson(userDoc);
+      } else {
+        state = null;
+      }
+    } on FirebaseException {}
   }
 
   Future<void> updatePassword({
@@ -41,9 +48,7 @@ class AuthController extends GetxController {
       );
 
       await currentUser.updatePassword(password);
-    } on FirebaseException catch (e) {
-      Get.snackbar('Error', e.message ?? 'An error occurred');
-    }
+    } on FirebaseException {}
   }
 
   Future<void> register({
@@ -53,7 +58,7 @@ class AuthController extends GetxController {
     required String password,
   }) async {
     try {
-      final UserCredential userCredential =
+      final UserCredential userCredential = //
           await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: user.email,
         password: password,
@@ -70,37 +75,31 @@ class AuthController extends GetxController {
           .doc(user.id)
           .set(user.toJson());
 
-      this.user = user;
-      update();
-    } on FirebaseException catch (e) {
-      Get.snackbar('Error', e.message ?? 'An error occurred');
-    }
+      state = user;
+    } on FirebaseException {}
   }
 
   Future<void> signOut() async {
     try {
       await FirebaseAuth.instance.signOut();
-      user = null;
-      update();
-    } on FirebaseException catch (e) {
-      Get.snackbar('Error', e.message ?? 'An error occurred');
-    }
+      state = null;
+    } on FirebaseException {}
   }
 
   Future<void> sendPasswordResetEmail(String email) async {
     try {
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-    } on FirebaseAuthException catch (e) {
-      Get.snackbar('Error', e.message ?? 'An error occurred');
+    } on FirebaseAuthException {
     }
   }
 
   Future<void> createStore({required StoreModel store}) async {
     try {
       await FirebaseFirestore.instance.collection('stores').add(store.toJson());
-    } on FirebaseException catch (e) {
-      Get.snackbar('Error', e.message ?? 'An error occurred');
+    } on FirebaseException {
     }
   }
-
 }
+
+final authNotifierProvider =
+    NotifierProvider<AuthNotifier, UserModel?>(() => AuthNotifier());

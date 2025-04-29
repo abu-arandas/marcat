@@ -1,23 +1,28 @@
-class Category {
+class Supplier {
   String id;
   String name;
-  String description;
+  String contactPerson;
+  String phone;
+  String email;
   DateTime createdAt;
   DateTime updatedAt;
 
-  Category({
+  Supplier({
     required this.id,
     required this.name,
-    required this.description,
+    required this.contactPerson,
+    required this.phone,
+    required this.email,
     required this.createdAt,
     required this.updatedAt,
   });
-  
-  Category.fromMap(Map<String, dynamic> map)
+
+  Supplier.fromMap(Map<String, dynamic> map)
       : id = map['id'],
         name = map['name'],
-        description = map['description'],
+        contactPerson = map['contactPerson'],
+        phone = map['phone'],
+        email = map['email'],
         createdAt = map['createdAt'].toDate(),
         updatedAt = map['updatedAt'].toDate();
 }
-
