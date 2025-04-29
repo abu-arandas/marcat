@@ -1,28 +1,82 @@
-import 'package:get/get.dart';
-
-import '../models/product.dart';
+import '/config/exports.dart';
 
 class ProductController extends GetxController {
   static ProductController instance = Get.find();
 
-  var products = <Product>[].obs;
-  var isLoading = true.obs;
+  RxList<ProductModel> products = <ProductModel>[].obs;
+  List<ProductModel> get allProducts => products;
+  List<ProductModel> get featuredProducts =>
+      products.where((product) => product.isFeatured).toList();
+  ProductModel product(String id) =>
+      products.singleWhere((product) => product.id == id);
 
   @override
   void onInit() {
-    fetchProducts();
     super.onInit();
+
+    products.bindStream(fetchProducts());
   }
 
-  void fetchProducts() async {
+  Stream<List<ProductModel>> fetchProducts() {
     try {
-      isLoading(true);
+      final snapshot = FirebaseFirestore.instance
+          .collection('products')
+          .orderBy('createdAt', descending: true)
+          .snapshots();
+
+      return snapshot.map((querySnapshot) =>
+          querySnapshot.docs.map((doc) => ProductModel.fromJson(doc)).toList());
+    } catch (e) {
+      Get.snackbar('Error', 'Error loading products: ${e.toString()}');
+      return Stream.value([]);
     } finally {
-      isLoading(false);
+      update();
     }
   }
 
-  Product? getProductById(String id) {
-    return products.firstWhereOrNull((product) => product.id == id);
+  Future<void> addProduct({required ProductModel product}) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('products')
+          .add(product.toJson());
+    } on FirebaseException catch (e) {
+      Get.snackbar('Error', 'Error adding product: ${e.message}');
+    }
+  }
+
+  Future<void> updateProduct(ProductModel product) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('products')
+          .doc(product.id)
+          .update(product.toJson());
+    } on FirebaseException catch (e) {
+      Get.snackbar('Error', 'Error adding product: ${e.message}');
+    }
+  }
+
+  Future<void> updateProductIsFeatured({
+    required String productId,
+    required bool isFeatured,
+  }) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('products')
+          .doc(productId)
+          .update({'isFeatured': isFeatured});
+    } on FirebaseException catch (e) {
+      Get.snackbar('Error', 'Error adding product: ${e.message}');
+    }
+  }
+
+  Future<void> deleteProduct(ProductModel product) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('products')
+          .doc(product.id)
+          .delete();
+    } on FirebaseException catch (e) {
+      Get.snackbar('Error', 'Error adding product: ${e.message}');
+    }
   }
 }

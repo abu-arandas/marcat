@@ -1,22 +1,21 @@
-class Category {
-  String id;
-  String name;
-  String description;
+import '../config/exports.dart';
 
-  Category({
+class CategoryModel {
+  String id, name, description;
+
+  CategoryModel({
     required this.id,
     required this.name,
     required this.description,
   });
 
-  factory Category.fromJson(Map<String, dynamic> json) => Category(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        description: json['description'] as String,
+  factory CategoryModel.fromJson(DocumentSnapshot doc) => CategoryModel(
+        id: doc.id,
+        name: doc['name'],
+        description: doc['description'],
       );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
         'name': name,
         'description': description,
       };

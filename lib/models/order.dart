@@ -1,122 +1,83 @@
-class Order {
-  String id, userId;
-  List<OrderItem> items;
-  double totalAmount;
-  Status status;
-  DateTime createdAt;
-  Payment payment;
+import '/config/exports.dart';
 
-  Order({
+enum OrderStatus { pending, processing, shipped, delivered, canceled }
+
+extension OrderStatusExtension on OrderStatus {
+  String fromEnum() => toString().split('.').last;
+
+  static OrderStatus fromJson(String status) {
+    return OrderStatus.values.firstWhere((e) => e.fromEnum() == status);
+  }
+}
+
+class OrderModel {
+  String id, userId;
+  DateTime date;
+  double total;
+  OrderStatus status;
+  List<OrderItemModel> items;
+  String storeId;
+
+  OrderModel({
     required this.id,
     required this.userId,
-    required this.items,
-    required this.totalAmount,
+    required this.date,
+    required this.total,
     required this.status,
-    required this.createdAt,
-    required this.payment,
+    required this.items,
+    required this.storeId,
   });
 
-  factory Order.fromJson(Map<String, dynamic> json) => Order(
-        id: json['id'] as String,
-        userId: json['userId'] as String,
-        items: (json['items'] as List)
-            .map((item) => OrderItem.fromJson(item))
-            .toList(),
-        totalAmount: (json['totalAmount'] as num).toDouble(),
-        status: statusFromJson(json['status']),
-        createdAt: DateTime.parse(json['createdAt'] as String),
-        payment: paymentFromJson(json['payment']),
+  factory OrderModel.fromJson(DocumentSnapshot doc) => OrderModel(
+        id: doc.id,
+        userId: doc['userId'] as String,
+        date: (doc['date'] as Timestamp).toDate(),
+        total: (doc['total'] as num).toDouble(),
+        status: OrderStatusExtension.fromJson(doc['status'] as String),
+        items: List<OrderItemModel>.from((doc['items'] as List<dynamic>)
+            .map((x) => OrderItemModel.fromJson(x))),
+        storeId: doc['storeId'] as String,
       );
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'userId': userId,
-        'items': items.map((item) => item.toJson()).toList(),
-        'totalAmount': totalAmount,
-        'status': statusFromEnum(status),
-        'createdAt': createdAt.toIso8601String(),
-        'payment': paymentFromEnum(payment),
+        'date': date,
+        'total': total,
+        'status': status.fromEnum(),
+        'items': List<dynamic>.from(items.map((x) => x.toJson())),
+        'storeId': storeId,
       };
 }
 
-class OrderItem {
-  String productId, color, size;
+class OrderItemModel {
+  String id;
+  String productId;
   int quantity;
   double price;
+  VariantModel variant;
 
-  OrderItem({
+  OrderItemModel({
+    required this.id,
     required this.productId,
-    required this.color,
-    required this.size,
     required this.quantity,
     required this.price,
+    required this.variant,
   });
 
-  factory OrderItem.fromJson(Map<String, dynamic> json) => OrderItem(
+  factory OrderItemModel.fromJson(Map<String, dynamic> json) => OrderItemModel(
+        id: json['id'] as String,
         productId: json['productId'] as String,
-        color: json['color'] as String,
-        size: json['size'] as String,
         quantity: json['quantity'] as int,
         price: (json['price'] as num).toDouble(),
+        variant: VariantModel.fromJson(json['variant']),
       );
 
   Map<String, dynamic> toJson() => {
+        'id': id,
         'productId': productId,
-        'color': color,
-        'size': size,
         'quantity': quantity,
         'price': price,
+        'variant': variant.toJson(),
       };
-}
-
-enum Status { bind, prepare, delivering, done }
-
-String statusFromEnum(Status status) {
-  switch (status) {
-    case Status.bind:
-      return 'bind';
-    case Status.prepare:
-      return 'prepare';
-    case Status.delivering:
-      return 'delivering';
-    case Status.done:
-      return 'done';
-  }
-}
-
-Status statusFromJson(String role) {
-  switch (role) {
-    case 'bind':
-      return Status.bind;
-    case 'prepare':
-      return Status.prepare;
-    case 'delivering':
-      return Status.delivering;
-    case 'done':
-      return Status.done;
-    default:
-      return Status.done;
-  }
-}
-
-enum Payment { cash, credite }
-
-String paymentFromEnum(Payment payment) {
-  switch (payment) {
-    case Payment.cash:
-      return 'cash';
-    case Payment.credite:
-      return 'credite';
-  }
-}
-
-Payment paymentFromJson(String payment) {
-  switch (payment) {
-    case 'cash':
-      return Payment.cash;
-    case 'credite':
-      return Payment.credite;
-    default:
-      return Payment.cash;
-  }
 }

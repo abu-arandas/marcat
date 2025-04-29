@@ -1,61 +1,81 @@
-import 'package:phone_form_field/phone_form_field.dart';
+import '../config/exports.dart';
 
-class User {
+enum Roles { customer, admin, store }
+
+extension RolesExtension on Roles {
+  String fromEnum() {
+    return toString().split('.').last;
+  }
+
+  static Roles fromJson(String role) {
+    return Roles.values.firstWhere((e) => e.fromEnum() == role);
+  }
+}
+
+class UserModel {
   String id, name, email;
-  PhoneNumber phoneNumber;
-  String? password;
+  PhoneNumber? phoneNumber;
   Roles role;
+  String? storeId;
 
-  User({
+  UserModel({
     required this.id,
     required this.name,
     required this.email,
-    required this.phoneNumber,
-    required this.password,
+    this.phoneNumber,
     required this.role,
+    this.storeId,
   });
 
-  factory User.fromJson(Map<String, dynamic> json) => User(
-        id: json['id'] as String,
-        name: json['first name'] + json['last name'] ?? '',
-        email: json['email'] as String,
-        phoneNumber: PhoneNumber.fromJson(json['phoneNumber']),
-        password: json['password'],
-        role: fromJson(json['role']),
+  bool hasRole(Roles role) => this.role == role;
+
+  factory UserModel.fromJson(DocumentSnapshot doc) => UserModel(
+        id: doc.id,
+        name: doc['name'],
+        email: doc['email'],
+        phoneNumber: PhoneNumber.fromJson(doc['phoneNumber']),
+        role: RolesExtension.fromJson(doc['role']),
+        storeId: doc['storeId'],
       );
 
   Map<String, dynamic> toJson() => {
         'id': id,
-        'first name': name.split(' ').first,
-        'last name': name.split(' ').last,
+        'name': name,
         'email': email,
-        'phoneNumber': phoneNumber.toJson(),
-        'role': fromEnum(role),
+        'phoneNumber': phoneNumber,
+        'role': role.fromEnum(),
+        'storeId': storeId,
       };
-}
 
-enum Roles { customer, admin, store }
+  StoreModel? store(DocumentSnapshot doc) {
+    if (storeId == null) return null;
 
-String fromEnum(Roles role) {
-  switch (role) {
-    case Roles.customer:
-      return 'customer';
-    case Roles.admin:
-      return 'admin';
-    case Roles.store:
-      return 'store';
+    return StoreModel(
+      id: storeId!,
+      name: doc['name'],
+      location: doc['location'],
+    );
   }
 }
 
-Roles fromJson(String role) {
-  switch (role) {
-    case 'customer':
-      return Roles.customer;
-    case 'admin':
-      return Roles.admin;
-    case 'store':
-      return Roles.store;
-    default:
-      return Roles.customer;
-  }
+class StoreModel {
+  String id, name, location;
+
+  StoreModel({
+    required this.id,
+    required this.name,
+    required this.location,
+  });
+
+  factory StoreModel.fromJson(Map<String, dynamic> json) => StoreModel(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        location: json['location'] as String,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'location': location,
+      };
 }

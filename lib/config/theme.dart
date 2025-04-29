@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import '/config/exports.dart';
 
 class AppTheme {
   static Color mutedGold = const Color(0xFF7F6549);

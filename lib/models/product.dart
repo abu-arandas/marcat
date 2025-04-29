@@ -1,128 +1,136 @@
-class Product {
-  String id, storeId, categoryId, name, description;
-  double basePrice;
-  List<ProductColorVariant> colorVariants;
-  List<Review> reviews;
+import '../config/exports.dart';
 
-  Product({
+class ProductModel {
+  final String id;
+  final String name;
+  final String description;
+  final String category;
+  final String? mainImageUrl;
+  final String? sku;
+  final List<VariantModel> variants;
+  final String storeId;
+  final double? discountPercentage;
+  final bool isFeatured;
+
+  ProductModel({
     required this.id,
-    required this.storeId,
-    required this.categoryId,
     required this.name,
     required this.description,
-    required this.basePrice,
-    required this.colorVariants,
-    required this.reviews,
+    required this.category,
+    this.mainImageUrl,
+    this.sku,
+    required this.variants,
+    required this.storeId,
+    this.isFeatured = false,
+    this.discountPercentage,
   });
 
-  factory Product.fromJson(Map<String, dynamic> json) => Product(
-        id: json['id'] as String,
-        storeId: json['storeId'] as String,
-        categoryId: json['categoryId'] as String,
-        name: json['name'] as String,
-        description: json['description'] as String,
-        basePrice: (json['basePrice'] as num).toDouble(),
-        colorVariants: (json['colorVariants'] as List<dynamic>)
-            .map((e) => ProductColorVariant.fromJson(e as Map<String, dynamic>))
+  factory ProductModel.fromJson(DocumentSnapshot doc) => ProductModel(
+        id: doc.id,
+        name: doc['name'],
+        description: doc['description'],
+        category: doc['category'],
+        mainImageUrl: doc['mainImageUrl'],
+        sku: doc['sku'],
+        variants: (doc['variants'] as List<dynamic>)
+            .map((e) => VariantModel.fromJson(e as Map<String, dynamic>))
             .toList(),
-        reviews: (json['reviews'] as List<dynamic>)
-            .map((e) => Review.fromJson(e as Map<String, dynamic>))
-            .toList(),
+        storeId: doc['storeId'],
+        discountPercentage: doc['discountPercentage'],
+        isFeatured: doc['isFeatured'],
       );
 
   Map<String, dynamic> toJson() => {
         'id': id,
-        'storeId': storeId,
-        'categoryId': categoryId,
         'name': name,
         'description': description,
-        'basePrice': basePrice,
-        'colorVariants': colorVariants.map((e) => e.toJson()).toList(),
-        'reviews': reviews.map((e) => e.toJson()).toList(),
+        'category': category,
+        'mainImageUrl': mainImageUrl,
+        'sku': sku,
+        'variants': List<dynamic>.from(variants.map((x) => x.toJson())),
+        'storeId': storeId,
+        'discountPercentage': discountPercentage,
+        'isFeatured': isFeatured,
+      };
+
+  double getFinalPrice(double price) {
+    if (discountPercentage != null && discountPercentage! > 0) {
+      return price * (1 - discountPercentage! / 100);
+    }
+    return price;
+  }
+}
+
+class VariantModel {
+  final String? sku;
+  final List<ColorVariantModel> colors;
+  final double price;
+
+  VariantModel({
+    required this.colors,
+    required this.price,
+    this.sku,
+  });
+
+  factory VariantModel.fromJson(Map<String, dynamic> json) => VariantModel(
+        colors: (json['colors'] as List<dynamic>)
+            .map((e) => ColorVariantModel.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        price: (json['price'] as num).toDouble(),
+        sku: json['sku'],
+      );
+
+  Map<String, dynamic> toJson() => {
+        'colors': colors.map((e) => e.toJson()).toList(),
+        'price': price,
+        'sku': sku,
       };
 }
 
-class ProductColorVariant {
-  String color; // e.g., "Red", "Blue", etc.
-  List<ProductSizeVariant> sizeVariants;
-  List<String> images; // URLs for images corresponding to this color
+class ColorVariantModel {
+  String color;
+  List<SizeVariantModel> sizes;
+  List<String> images;
 
-  ProductColorVariant({
+  ColorVariantModel({
     required this.color,
-    required this.sizeVariants,
+    required this.sizes,
     required this.images,
   });
 
-  factory ProductColorVariant.fromJson(Map<String, dynamic> json) =>
-      ProductColorVariant(
+  factory ColorVariantModel.fromJson(Map<String, dynamic> json) =>
+      ColorVariantModel(
         color: json['color'] as String,
-        sizeVariants: (json['sizeVariants'] as List<dynamic>)
-            .map((e) => ProductSizeVariant.fromJson(e as Map<String, dynamic>))
+        sizes: (json['sizes'] as List<dynamic>)
+            .map((e) => SizeVariantModel.fromJson(e as Map<String, dynamic>))
             .toList(),
-        images: List<String>.from(json['images']),
+        images: json['images'] as List<String>,
       );
 
   Map<String, dynamic> toJson() => {
         'color': color,
-        'sizeVariants': sizeVariants.map((e) => e.toJson()).toList(),
+        'sizes': sizes.map((e) => e.toJson()).toList(),
         'images': images,
       };
 }
 
-class ProductSizeVariant {
-  String size; // e.g., "S", "M", "L"
-  int quantity;
-  double? additionalPrice; // Optional price difference for this size
+class SizeVariantModel {
+  String size;
+  int stock;
 
-  ProductSizeVariant({
+  SizeVariantModel({
     required this.size,
-    required this.quantity,
-    this.additionalPrice,
+    required this.stock,
   });
 
-  factory ProductSizeVariant.fromJson(Map<String, dynamic> json) =>
-      ProductSizeVariant(
+  factory SizeVariantModel.fromJson(Map<String, dynamic> json) =>
+      SizeVariantModel(
         size: json['size'] as String,
-        quantity: json['quantity'] as int,
-        additionalPrice: json['additionalPrice'] != null
-            ? (json['additionalPrice'] as num).toDouble()
-            : null,
+        stock: json['stock'] as int,
       );
 
   Map<String, dynamic> toJson() => {
         'size': size,
-        'quantity': quantity,
-        'additionalPrice': additionalPrice,
-      };
-}
-
-class Review {
-  String id, userId;
-  double rating;
-  String comment;
-  DateTime createdAt;
-
-  Review({
-    required this.id,
-    required this.userId,
-    required this.rating,
-    required this.comment,
-    required this.createdAt,
-  });
-
-  factory Review.fromJson(Map<String, dynamic> json) => Review(
-        id: json['id'] as String,
-        userId: json['userId'] as String,
-        rating: (json['rating'] as num).toDouble(),
-        comment: json['comment'] as String,
-        createdAt: DateTime.parse(json['createdAt'] as String),
-      );
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'userId': userId,
-        'rating': rating,
-        'comment': comment,
-        'createdAt': createdAt.toIso8601String(),
+        'stock': stock,
       };
 }

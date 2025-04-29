@@ -1,32 +1,28 @@
-class CartItem {
-  String id, productId, color, size;
-  int quantity;
-  double price;
+import '/config/exports.dart';
 
-  CartItem({
+class CartItemModel {
+  String id, productId;
+  VariantModel variant;
+  int quantity;
+
+  CartItemModel({
     required this.id,
     required this.productId,
-    required this.color,
-    required this.size,
+    required this.variant,
     required this.quantity,
-    required this.price,
   });
 
-  factory CartItem.fromJson(Map<String, dynamic> json) => CartItem(
-        id: json['id'] as String,
-        productId: json['productId'] as String,
-        color: json['color'] as String,
-        size: json['size'] as String,
-        quantity: json['quantity'] as int,
-        price: (json['price'] as num).toDouble(),
+  factory CartItemModel.fromJson(Map<String, dynamic> json) => CartItemModel(
+        id: json['id'],
+        productId: json['productId'],
+        variant: VariantModel.fromJson(json['variant']),
+        quantity: json['quantity'],
       );
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'productId': productId,
-        'color': color,
-        'size': size,
+        'variant': variant.toJson(),
         'quantity': quantity,
-        'price': price,
       };
 }
