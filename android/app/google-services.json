@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1004970733902",
+    "project_id": "marcat-jo",
+    "storage_bucket": "marcat-jo.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1004970733902:android:4cf1b865d30a309e052e1f",
+        "android_client_info": {
+          "package_name": "com.arandas.marcat"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDqktAJyl7bOvmY-Q6YGyCPC_L1wJQXK8Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

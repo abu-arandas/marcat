@@ -1,166 +1,216 @@
-🛍️ Marcat Retail Management System
-A full-featured retail management solution for a multi-store clothing brand, built with Flutter and backed by Firebase.
+# 🛍️ Marcat Retail Management System
 
-📖 Overview
-Marcat centralizes:
+&#x20; &#x20;
 
-POS System: In-store sales with offline support
+A modern, multi-store retail management platform built with ❤️ using Flutter and Firebase. Empower retailers to streamline operations, manage inventory, and gain actionable insights across multiple locations.
 
-Inventory Management: Track stock per product variant (color & size)
+---
 
-Employee & Role Management: Store-specific staff with gated permissions
+## 📖 Table of Contents
 
-Sales Analytics: Real-time dashboards by store, product, and seller
+- [🌟 Key Features](#-key-features)
+- [📸 UI Previews](#-ui-previews)
+- [🛠 Tech Stack](#-tech-stack)
+- [🏗 System Architecture](#-system-architecture)
+- [🛣 Roadmap](#-roadmap)
+- [🚀 Getting Started](#-getting-started)
+- [🔧 Deployment](#-deployment)
+- [🗄 Data Model](#-data-model)
+- [🧩 Contributing](#-contributing)
+- [❓ FAQ](#-faq)
+- [📜 License](#-license)
+- [📬 Contact](#-contact)
 
-Customer CRM & Loyalty: Profiles, purchase history, and points
+---
 
-Notifications & Alerts: Low-stock emails and push messages
+## 🌟 Key Features
 
-Admin Dashboard: Web-based management interface
+| Module             | Highlights                                                                                                        |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| 💻 Point of Sale   | - Offline-first operations- Barcode & QR scanning- Custom receipt templates- Multi-payment (cash, card, wallet)   |
+| 📦 Inventory       | - Variant-level tracking- Low-stock auto-reorder- Supplier catalogs & orders- Transfer between stores             |
+| 👥 Team Management | - Granular role-based ACL- Shift scheduling & clock-in/out- Performance leaderboards- Mobile time clocks          |
+| 📊 Analytics       | - Real-time sales dashboards- Custom report builder- Trend forecasting- Customer segmentation & behavior insights |
+| 🔔 Notifications   | - Instant low-stock alerts- Price change & promotion notifications- Scheduled reminders- Security & audit logs    |
 
-CI/CD & App Distribution: Automated testing and releases
+---
 
-✨ Features
-Multi-Tenant Authentication
-Secure each store as a standalone tenant in one Firebase project 
-Firebase
+## 📸 UI Previews
 
-Offline-First Data
-Cloud Firestore caches active data locally; reads/writes sync when online 
-Firebase
+> More screenshots available in the `docs/` directory.
 
-Modular Cloud Functions
-Organize business logic into multiple codebases via firebase.json 
-Firebase
+---
 
-Secure Asset Storage
-Cloud Storage rules enforce path-based access for images and files 
-Firebase
+## 🛠 Tech Stack
 
-Reliable Push Notifications
-FCM delivers messages even if devices are temporarily offline 
-Firebase
+- **Frontend:** Flutter & Dart (with Riverpod, GoRouter)
+- **Backend:** Firebase (Auth, Firestore, Functions, Storage, Hosting)
+- **DevOps:** GitHub Actions (CI/CD), Fastlane (iOS releases)
+- **Monitoring & Analytics:** Firebase Crashlytics, Google Analytics for Firebase
 
-Automated Email Triggers
-Use the Firestore Trigger Email extension to notify managers about low stock 
-Firebase
+---
 
-Global Web Hosting
-Deploy the Admin Dashboard to Firebase Hosting’s CDN with one CLI command 
-Firebase
+## 🏗 System Architecture
 
-Seamless CI/CD Releases
-Integrate Firebase App Distribution with GitHub Actions or Fastlane 
-Firebase
+```plaintext
++----------------------+
+|      Flutter App     |
+| - POS Module         |
+| - Inventory Module   |
+| - Analytics Module   |
++----------------------+
+          │
+          ▼
++----------------------+
+|  Firebase Services   |
+| - Firestore          |
+| - Auth               |
+| - Functions          |
+| - Storage            |
+| - Hosting            |
+| - Crashlytics        |
++----------------------+
+```
 
-Role-Based Security
-Firestore Security Rules validate custom claims for fine-grained permissions 
-Firebase
+----------------------+      +-------------------+      +-------------------+      +----------------+
+|      Flutter App     | <--> | Firebase Services | <--> | Third-Party APIs  | <--> | Mobile Devices  |
+| - POS Module         |      | - Firestore       |      | - Payment Gateways|      | (iOS, Android)  |
+| - Inventory Module   |      | - Auth            |      | - Notification    |      +----------------+
+| - Analytics Module
+|      | - Functions       |      |   Providers       |
++----------------------+      +-------------------+      +-------------------+
+```
 
-Performance Best Practices
-Set minimum Cloud Functions instances to mitigate cold starts 
-Firebase
+---
 
-🏗️ System Architecture
-scss
-Copy
-Edit
-[ Flutter App ] ←→ [ Firebase Services ]
-                     ├─ Auth (multi-tenant)
-                     ├─ Firestore (data + offline)
-                     ├─ Storage (assets)
-                     ├─ Functions (logic)
-                     ├─ FCM (notifications)
-                     ├─ Extensions (email, resizing)
-                     ├─ Hosting (Admin web)
-                     └─ App Distribution (CI/CD)
-🔧 Setup & Deployment
-Clone Repo
+## 🛣 Roadmap
 
-bash
-Copy
-Edit
-git clone https://github.com/abu-arandas/marcat.git
-cd marcat-firebase
-Initialize Firebase
+- **v1.1.0**: Multi-currency support, advanced discount rules, dark mode
+- **v1.2.0**: Loyalty & rewards program, integration with major e-commerce platforms
+- **v2.0.0**: Desktop & web client, open API & plugin architecture
 
-bash
-Copy
-Edit
-firebase login
-firebase init auth,firestore,functions,hosting,storage,extensions,appdistribution
-Configure Multi-Tenancy
+Contributions and feedback shape our roadmap. See [ISSUES](https://github.com/abu-arandas/marcat/issues) for ongoing items.
 
-Enable Identity Platform in GCP.
+---
 
-Install Dependencies
+## 🚀 Getting Started
 
-Functions:
+### Prerequisites
 
-bash
-Copy
-Edit
-cd functions
-npm install
-Flutter App:
+- **Flutter:** 3.13 or above
+- **Firebase CLI:** 12.4.0 or above
 
-bash
-Copy
-Edit
-cd ../app
+### Installation
+
+```bash
+# Clone the repository with submodules
+git clone --recursive https://github.com/abu-arandas/marcat.git
+cd marcat
+
+# Install Flutter dependencies
 flutter pub get
-Deploy Services
 
-bash
-Copy
-Edit
-firebase deploy --only auth,firestore,storage,functions,hosting
-Distribute Mobile Builds
+# Install Cloud Functions dependencies
+cd functions && npm ci && cd ..
+```
 
-bash
-Copy
-Edit
-# Via Firebase CLI
-firebase appdistribution:distribute build/app.apk \
-  --app <APP_ID> --groups "QA Testers"
-📐 Data Modeling
-swift
-Copy
-Edit
-Variants include color, size, sku, and price.
+### Configuration
 
-Inventory docs track quantity.
+```bash
+# Link to your Firebase project
+firebase use --add
 
-Sales subcollections record transaction metadata.
+# Initialize required Firebase services
+firebase init auth firestore functions storage hosting extensions
+```
 
-🔒 Security & Access Control
-Firestore Rules (example):
+---
 
-js
-Copy
-Edit
-Firebase
+## 🔧 Deployment
 
-🔄 Offline Support & Sync
-Firestore’s local cache serves reads/writes offline by default 
-Firebase
-.
+### Backend Services
 
-Sync resumes automatically on reconnect; clients use last-write-wins conflict resolution.
+```bash
+# Deploy Cloud Functions, Firestore rules, Hosting, and Extensions
+firebase deploy --only functions,firestore,hosting,extensions
+```
 
-🤝 Contributing
-Fork the repository
+### Mobile Apps
 
-Create a branch: git checkout -b feature/your-feature
+```bash
+# Android: build App Bundle for Play Store
+flutter build appbundle --release
 
-Commit changes: git commit -m "Add awesome feature"
+# iOS: release via Fastlane
+cd ios && fastlane release
+```
 
-Push: git push origin feature/your-feature
+---
 
-Open a PR
+## 🗄 Data Model
 
-📝 License
-MIT License. See LICENSE for details.
+```dart
+class Product {
+  String id;
+  String name;
+  String category;
+  List<Variant> variants;
+  DateTime createdAt;
+}
 
-📞 Support
-For questions or enterprise integration, contact the Marcat Dev Team at e00arandas@gmail.com.
+class Variant {
+  String id;
+  String color;
+  List<String> images;
+  List<SizeOption> sizes;
+}
+
+class SizeOption {
+  String size;
+  double price;
+  int stock;
+}
+```
+
+---
+
+
+
+## 🧩 Contributing
+
+We welcome contributions! Please read our [CONTRIBUTING.md](./CONTRIBUTING.md) and adhere to the following:
+
+1. Fork the repo & create a feature branch (`git checkout -b feature/awesome-feature`)
+2. Write clear, test-covered code
+3. Ensure build & lint checks pass via GitHub Actions
+4. Submit a pull request and participate in review discussions
+
+---
+
+## ❓ FAQ
+
+**Q:** Can I use Marcat for a single store?
+**A:** Yes! Simply configure one store in the dashboard settings.
+
+**Q:** How do I migrate my existing POS data?
+**A:** Use the CSV import feature under Inventory → Import, or script via Firestore APIs.
+
+**Q:** Is there support for custom themes?
+**A:** Theming is under development (v1.1 roadmap).
+
+---
+
+## 📜 License
+
+Distributed under the MIT License. See [LICENSE](./LICENSE) for details.
+
+---
+
+## 📬 Contact
+
+- **Website:** [https://marcat.io](https://marcat.io)
+- **Email:** [support@marcat.io](mailto\:support@marcat.io)
+- **Issues:** [https://github.com/abu-arandas/marcat/issues](https://github.com/abu-arandas/marcat/issues)
+
+Made with ✨ by Retail Experts, for Retail Experts
+

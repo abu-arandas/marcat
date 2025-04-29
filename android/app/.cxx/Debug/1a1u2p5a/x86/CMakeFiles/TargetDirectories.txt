@@ -1,0 +1,2 @@
+C:/Users/user/StudioProjects/marcat/android/app/.cxx/Debug/1a1u2p5a/x86/CMakeFiles/edit_cache.dir
+C:/Users/user/StudioProjects/marcat/android/app/.cxx/Debug/1a1u2p5a/x86/CMakeFiles/rebuild_cache.dir
