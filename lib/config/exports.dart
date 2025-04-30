@@ -34,6 +34,6 @@ export '../views/home_screen.dart';
 export '../views/authentication/login_screen.dart';
 export '../views/authentication/register_screen.dart';
 
-export '../views/customer/home_screen.dart';
+export '../views/customer/home/home_screen.dart';
 
 export '../views/product_list_screen.dart';

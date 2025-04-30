@@ -4,6 +4,8 @@ class AppTheme {
   static Color mutedGold = const Color(0xFF7F6549);
   static Color deepBronze = const Color(0xFF715A41);
   static Color richBrownGold = const Color(0xFF7F664B);
+  static Color accentGold = const Color(0xFFF5C16C);
+  static Color accentBlack = Colors.black;
 
   static ThemeData theme = ThemeData(
     useMaterial3: true,
@@ -26,15 +28,56 @@ class AppTheme {
       ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: richBrownGold,
-        foregroundColor: Colors.white,
-        iconColor: Colors.white,
+      style: ButtonStyle(
+        backgroundColor: MaterialStateProperty.resolveWith<Color>((states) {
+          if (states.contains(MaterialState.hovered) || states.contains(MaterialState.pressed)) {
+            return accentGold;
+          }
+          return richBrownGold;
+        }),
+        foregroundColor: MaterialStateProperty.all<Color>(Colors.white),
+        overlayColor: MaterialStateProperty.all<Color>(accentGold.withOpacity(0.15)),
+        iconColor: MaterialStateProperty.all<Color>(Colors.white),
+        shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        elevation: MaterialStateProperty.all<double>(2),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: ButtonStyle(
+        foregroundColor: MaterialStateProperty.resolveWith<Color>((states) {
+          if (states.contains(MaterialState.hovered) || states.contains(MaterialState.pressed)) {
+            return accentBlack;
+          }
+          return richBrownGold;
+        }),
+        backgroundColor: MaterialStateProperty.resolveWith<Color?>((states) {
+          if (states.contains(MaterialState.hovered) || states.contains(MaterialState.pressed)) {
+            return accentGold.withOpacity(0.08);
+          }
+          return null;
+        }),
+        side: MaterialStateProperty.resolveWith<BorderSide>((states) {
+          if (states.contains(MaterialState.hovered) || states.contains(MaterialState.pressed)) {
+            return BorderSide(color: accentGold, width: 2);
+          }
+          return BorderSide(color: richBrownGold, width: 1.5);
+        }),
+        shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(
-        foregroundColor: richBrownGold,
+      style: ButtonStyle(
+        foregroundColor: MaterialStateProperty.resolveWith<Color>((states) {
+          if (states.contains(MaterialState.hovered) || states.contains(MaterialState.pressed)) {
+            return accentGold;
+          }
+          return richBrownGold;
+        }),
+        overlayColor: MaterialStateProperty.all<Color>(accentGold.withOpacity(0.08)),
       ),
     ),
   );
