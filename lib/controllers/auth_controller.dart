@@ -1,6 +1,6 @@
 // lib/controllers/auth_controller.dart
 
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
@@ -86,31 +86,13 @@ class AuthController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    // Inject Mock QA Auth
-    state.value = AuthState(
-      user: UserModel(
-        id: '123e4567-e89b-12d3-a456-426614174000',
-        firstName: 'QA',
-        lastName: 'Tester',
-        phone: '+962790000000',
-        role: UserRole.customer,
-        status: 'active',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      ),
-      customer: CustomerModel(
-        id: '123e4567-e89b-12d3-a456-426614174000',
-        loyaltyPoints: 150,
-        loyaltyTier: LoyaltyTier.Silver,
-        totalSpent: 45.0,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      ),
-      roles: ['customer'],
-      isLoading: false,
-    );
-    // _subscribeToAuthChanges(); // Bypass actual Supabase init listener
+    // FIX: mock QA auth was injected here and the real listener was commented
+    // out, meaning no real user could ever sign in or have their session
+    // restored on cold start. Restored the real auth listener.
+    _subscribeToAuthChanges();
   }
+
+  // ── Auth state listener ──────────────────────────────────────────────────────
 
   void _subscribeToAuthChanges() {
     _client.auth.onAuthStateChange.listen((event) async {
@@ -153,7 +135,9 @@ class AuthController extends GetxController {
       state.value = AuthState(user: user, customer: customerRow, roles: roles);
       update();
       _redirectBasedOnRole();
-    } catch (e) {
+    } catch (e, s) {
+      // FIX: was catch (e) — stack trace was silently discarded.
+      debugPrint('[AuthController._loadUserData] $e\n$s');
       state.value = AuthState(error: e.toString());
     }
   }
@@ -180,42 +164,26 @@ class AuthController extends GetxController {
 
   // ── Public auth actions ──────────────────────────────────────────────────────
 
+  /// Signs the user in with email and password.
+  ///
+  /// On success, [_subscribeToAuthChanges] handles _loadUserData() and
+  /// _redirectBasedOnRole() — no manual wiring needed here.
+  /// On failure, sets state.error and rethrows so the UI can display it.
   Future<void> signIn(String email, String password) async {
     state.value = state.value.copyWith(isLoading: true, error: null);
     try {
-      // --- QA MOCK AUTH BYPASS ---
-      // Hardcoded mock user for testing authenticated routes
-      await Future.delayed(const Duration(seconds: 1));
-      
-      final mockUser = UserModel(
-        id: '123e4567-e89b-12d3-a456-426614174000',
-        firstName: 'QA',
-        lastName: 'Tester',
-        phone: '+962790000000',
-        role: UserRole.customer,
-        status: 'active',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+      // FIX: entire method body was replaced with a hardcoded QA mock and a
+      // 'return' statement before the real Supabase call. Removed entirely.
+      // Real signInWithPassword is now called — auth listener does the rest.
+      await _client.auth.signInWithPassword(
+        email: email.trim(),
+        password: password,
       );
-      
-      final mockCustomer = CustomerModel(
-        id: '123e4567-e89b-12d3-a456-426614174000',
-        loyaltyPoints: 150,
-        loyaltyTier: LoyaltyTier.Silver,
-        totalSpent: 45.0,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-
-      state.value = AuthState(
-        user: mockUser,
-        customer: mockCustomer,
-        roles: ['customer'],
-      );
-      update();
-      _redirectBasedOnRole();
-      return;
-      // ---------------------------
+      // Note: isLoading stays true until _loadUserData() finishes via the
+      // auth listener, which then sets state with isLoading: false.
+    } on sb.AuthException catch (e, s) {
+      state.value = AuthState(error: e.message);
+      throw ErrorHandler.handle(e, s);
     } catch (e, s) {
       if (e is AppException) {
         state.value = AuthState(error: e.message);
@@ -247,7 +215,11 @@ class AuthController extends GetxController {
         throw const AppException(
             message: 'Registration failed. Please try again.');
       }
-      // Auth state change listener handles the rest.
+      // FIX: isLoading was never reset on the success path when the auth
+      // state-change listener fires slowly. Reset it here as a safety net.
+      // The listener's _loadUserData() will overwrite with the full state
+      // once it completes.
+      state.value = state.value.copyWith(isLoading: false);
     } on sb.AuthException catch (e, s) {
       state.value = AuthState(error: e.message);
       throw ErrorHandler.handle(e, s);
@@ -340,5 +312,17 @@ class AuthController extends GetxController {
         .maybeSingle();
     if (data == null) return null;
     return CustomerModel.fromJson(data);
+  }
+
+  /// Updates the currently authenticated user's password.
+  /// Supabase handles this via the active JWT — no current password needed.
+  Future<void> updatePassword(String newPassword) async {
+    try {
+      await _client.auth.updateUser(
+        sb.UserAttributes(password: newPassword),
+      );
+    } on sb.AuthException catch (e, s) {
+      throw ErrorHandler.handle(e, s);
+    }
   }
 }

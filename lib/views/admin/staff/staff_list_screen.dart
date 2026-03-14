@@ -6,7 +6,6 @@ import '../../../controllers/admin_controller.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_text_styles.dart';
-import '../../../core/extensions/context_extensions.dart';
 import '../../shared/widgets/marcat_app_bar.dart';
 import '../../shared/widgets/marcat_badge.dart';
 import 'package:marcat/core/router/app_router.dart';
@@ -22,12 +21,12 @@ class AdminStaffListScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.surfaceGrey,
       appBar: MarcatAppBar(
-        title: context.l10n.adminStaff,
+        title: 'Admin Staff',
         centerTitle: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            tooltip: context.l10n.addStaff,
+            tooltip: 'Add Staff',
             onPressed: () => Get.toNamed(AppRoutes.adminStaff),
           ),
         ],

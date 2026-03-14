@@ -1,29 +1,28 @@
-// lib/core/bindings/initial_binding.dart
+// lib/core/initial_binding.dart
 //
 // Registers every app-wide controller exactly once at startup.
 //
-// The 15 old repository classes (AuthRepository, CartRepository, etc.) have
-// been removed — each merged controller owns its Supabase calls directly.
-// Delete the entire lib/controllers/repositories/ directory.
+// FIX: LocaleController is now only registered HERE with permanent:true.
+// The duplicate Get.put(LocaleController()) call in main.dart has been removed.
+// Duplicate registration caused GetX to silently ignore the permanent flag
+// on the second call, which meant the controller could be garbage-collected.
+//
+// ShopController is NOT registered here — it is scoped per-page in ShopPage
+// using Get.put(..., tag: tag) so each category gets its own instance.
 
 import 'package:get/get.dart';
 
-import '../../controllers/auth_controller.dart';
-import '../../controllers/locale_controller.dart';
-import '../../controllers/product_controller.dart';
-import '../../controllers/cart_controller.dart';
-import '../../controllers/account_controller.dart';
-import '../../controllers/admin_controller.dart';
-import '../../controllers/delivery_controller.dart';
-import '../../controllers/search_controller.dart';
+import '../controllers/auth_controller.dart';
+import '../controllers/product_controller.dart';
+import '../controllers/cart_controller.dart';
+import '../controllers/account_controller.dart';
+import '../controllers/admin_controller.dart';
+import '../controllers/delivery_controller.dart';
+import '../controllers/search_controller.dart';
 
 class InitialBinding extends Bindings {
   @override
   void dependencies() {
-    // ── Locale ───────────────────────────────────────────────────────────────
-    // Must be first — the app renders the correct language on the first frame.
-    Get.put(LocaleController(), permanent: true);
-
     // ── Auth ─────────────────────────────────────────────────────────────────
     // Permanent; subscribes to Supabase onAuthStateChange at init.
     // AuthGuard reads Get.find<AuthController>().state on every route push.
@@ -58,5 +57,9 @@ class InitialBinding extends Bindings {
     // Permanent; the search sheet is accessible from every screen.
     // Delegates all data reads to ProductController — no direct Supabase calls.
     Get.put(SearchController(), permanent: true);
+
+    // Note: ShopController is intentionally NOT registered here.
+    // It is created per-page in ShopPage via Get.put(..., tag: categoryId)
+    // so that different category views each maintain independent state.
   }
 }

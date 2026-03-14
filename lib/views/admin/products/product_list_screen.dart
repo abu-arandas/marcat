@@ -6,7 +6,6 @@ import '../../../controllers/product_controller.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_text_styles.dart';
-import '../../../core/extensions/context_extensions.dart';
 import 'package:marcat/models/product_model.dart';
 import 'package:marcat/models/enums.dart';
 import '../../shared/widgets/marcat_app_bar.dart';
@@ -40,7 +39,8 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
     });
 
     try {
-      final (fetchedProducts, _) = await _productCtrl.fetchProducts(page: 0, pageSize: 50);
+      final (fetchedProducts, _) =
+          await _productCtrl.fetchProducts(page: 0, pageSize: 50);
       if (mounted) {
         setState(() {
           products = fetchedProducts;
@@ -62,7 +62,7 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
     return Scaffold(
       backgroundColor: AppColors.surfaceGrey,
       appBar: MarcatAppBar(
-        title: context.l10n.adminProducts,
+        title: 'Admin Products',
         centerTitle: false,
         actions: [
           IconButton(
@@ -110,8 +110,7 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
             contentPadding: const EdgeInsets.all(AppDimensions.space12),
             leading: p.primaryImageUrl != null
                 ? ClipRRect(
-                    borderRadius:
-                        BorderRadius.circular(AppDimensions.radiusXS),
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusXS),
                     child: Image.network(p.primaryImageUrl!,
                         width: 50, height: 70, fit: BoxFit.cover),
                   )
@@ -141,8 +140,7 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
                       : AppColors.statusAmber,
                 ),
                 const SizedBox(width: AppDimensions.space8),
-                const Icon(Icons.chevron_right,
-                    color: AppColors.textDisabled),
+                const Icon(Icons.chevron_right, color: AppColors.textDisabled),
               ],
             ),
             onTap: () {

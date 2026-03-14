@@ -2,12 +2,40 @@
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SupabaseConstants
+// ─────────────────────────────────────────────────────────────────────────────
+
 class SupabaseConstants {
   SupabaseConstants._();
 
-  // ── Supabase project credentials (loaded from .env) ───────────────────────
-  static String get url => dotenv.env['SUPABASE_URL'] ?? '';
-  static String get anonKey => dotenv.env['SUPABASE_ANON_KEY'] ?? '';
+  // ── Supabase project credentials ──────────────────────────────────────────
+  //
+  // FIX: the .env file was bundled into the APK as a plain-text asset, making
+  // SUPABASE_ANON_KEY trivially extractable with any APK decompiler.
+  //
+  // New dual-mode strategy:
+  //   • DEBUG  – reads from the .env file via flutter_dotenv (developer convenience).
+  //   • RELEASE – reads compile-time constants injected by --dart-define:
+  //       flutter build apk \
+  //         --dart-define=SUPABASE_URL=https://xxx.supabase.co \
+  //         --dart-define=SUPABASE_ANON_KEY=eyJxxx
+  //
+  // The .env file remains in pubspec assets only for debug; you can guard its
+  // inclusion with a Dart compile flag if you want a fully clean release build.
+  static String get url {
+    // --dart-define value takes precedence (release / CI builds).
+    const buildTimeUrl = String.fromEnvironment('SUPABASE_URL');
+    if (buildTimeUrl.isNotEmpty) return buildTimeUrl;
+    // Fallback: .env for local debug.
+    return dotenv.env['SUPABASE_URL'] ?? '';
+  }
+
+  static String get anonKey {
+    const buildTimeKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+    if (buildTimeKey.isNotEmpty) return buildTimeKey;
+    return dotenv.env['SUPABASE_ANON_KEY'] ?? '';
+  }
 
   // ── Storage buckets ───────────────────────────────────────────────────────
   static const String productImagesBucket = 'product-images';
@@ -63,10 +91,8 @@ class SupabaseConstants {
   static const String rpcProcessPosSale = 'process_pos_sale';
   static const String rpcApproveCommission = 'approve_commission';
   static const String rpcGetProductAvailability = 'get_product_availability';
-  // ADDED: used by AdminController.verifyPosPin / setPosPin
   static const String rpcVerifyPosPin = 'verify_pos_pin';
   static const String rpcSetPosPin = 'set_pos_pin';
-  // Server-side loyalty adjustment (optional alternative to direct insert)
   static const String rpcAdjustLoyaltyPoints = 'adjust_loyalty_points';
 
   // ── Role name constants ───────────────────────────────────────────────────
@@ -81,6 +107,6 @@ class SupabaseConstants {
 
   // ── Business rules ────────────────────────────────────────────────────────
   static const String defaultCurrency = 'JOD';
-  static const int loyaltyPointsPerJod = 1; // 1 JOD spent  → 1 point earned
+  static const int loyaltyPointsPerJod = 1; // 1 JOD spent  → 1 point
   static const int loyaltyRedeemRate = 100; // 100 points   → 1 JOD discount
 }

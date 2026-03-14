@@ -5,7 +5,6 @@ import 'package:get/get.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_text_styles.dart';
-import '../../../core/extensions/context_extensions.dart';
 import 'package:marcat/controllers/auth_controller.dart';
 import '../../shared/widgets/marcat_app_bar.dart';
 
@@ -19,7 +18,7 @@ class AdminDashboardScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.surfaceGrey,
       appBar: MarcatAppBar(
-        title: context.l10n.adminDashboard,
+        title: 'Admin Dashboard',
         centerTitle: false,
         actions: [
           IconButton(
@@ -72,7 +71,7 @@ class AdminDashboardScreen extends StatelessWidget {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 childAspectRatio: 2.5,
-                children: [
+                children: const [
                   _StatCard(
                       title: "Today's Sales",
                       value: 'JOD 1,420.50',

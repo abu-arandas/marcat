@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_text_styles.dart';
-import '../../../core/extensions/context_extensions.dart';
 
 class MarcatLoyaltyBadge extends StatelessWidget {
   const MarcatLoyaltyBadge({
@@ -60,7 +59,7 @@ class MarcatLoyaltyBadge extends StatelessWidget {
             const SizedBox(width: AppDimensions.space4),
           ],
           Text(
-            context.l10n.loyaltyPoints(points),
+            '$points points',
             style: style.copyWith(
               color: AppColors.marcatBlack,
               fontWeight: FontWeight.w700,

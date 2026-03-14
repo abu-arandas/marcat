@@ -45,12 +45,10 @@ class AccountController extends GetxController {
   Future<void> loadProfile(String userId) async {
     isLoadingProfile.value = true;
     try {
-      final results = await Future.wait([
+      await Future.wait([
         fetchUserProfile(userId),
         fetchCustomer(userId),
       ]);
-      profile.value = results[0] as UserModel?;
-      customer.value = results[1] as CustomerModel?;
     } catch (e) {
       rethrow;
     } finally {
@@ -80,7 +78,7 @@ class AccountController extends GetxController {
           .from(SupabaseConstants.profiles)
           .update(data)
           .eq('id', userId);
-      // Refresh local state
+      // Refresh local state after update.
       await fetchUserProfile(userId);
     } on PostgrestException catch (e, s) {
       throw ErrorHandler.handle(e, s);
@@ -151,8 +149,7 @@ class AccountController extends GetxController {
 
   // ─── Admin: customer list ───────────────────────────────────────────────────
 
-  /// Fetches a paginated list of customer summaries from the v_customer_summary
-  /// view.  Designed for the admin customers screen.
+  /// Fetches a paginated list of customer summaries from v_customer_summary.
   Future<void> fetchCustomerSummaries({
     int page = 0,
     int pageSize = SupabaseConstants.defaultPageSize,
@@ -163,7 +160,6 @@ class AccountController extends GetxController {
       var q = _client.from(SupabaseConstants.vCustomerSummary).select();
       if (query != null && query.isNotEmpty) {
         q = q.or(
-          'email.ilike.%$query%,'
           'first_name.ilike.%$query%,'
           'last_name.ilike.%$query%,'
           'phone.ilike.%$query%',
@@ -193,36 +189,10 @@ class AccountController extends GetxController {
   Future<void> fetchAddresses(String customerId) async {
     isLoadingAddresses.value = true;
     try {
-      // Mock bypass for QA testing
-      if (customerId == '123e4567-e89b-12d3-a456-426614174000') {
-        await Future.delayed(const Duration(milliseconds: 500));
-        addresses.assignAll([
-          CustomerAddressModel(
-            id: 9991,
-            customerId: '123e4567-e89b-12d3-a456-426614174000',
-            label: 'Home',
-            fullAddress: '123 QA Tester St, Building 4',
-            city: 'Amman',
-            country: 'Jordan',
-            isDefault: true,
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          ),
-          CustomerAddressModel(
-            id: 9992,
-            customerId: '123e4567-e89b-12d3-a456-426614174000',
-            label: 'Work',
-            fullAddress: '456 Tech Park, Office 101',
-            city: 'Amman',
-            country: 'Jordan',
-            isDefault: false,
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          ),
-        ]);
-        return;
-      }
-
+      // FIX: removed QA mock bypass that short-circuited the real Supabase
+      // query when customerId == '123e4567-...'. Real customers with that UUID
+      // would receive fake addresses and real address operations would silently
+      // fail. Removed entirely — the real query always runs now.
       final data = await _client
           .from(SupabaseConstants.customerAddresses)
           .select()
@@ -294,6 +264,13 @@ class AccountController extends GetxController {
   // LOYALTY
   // ═══════════════════════════════════════════════════════════════════════════
 
+  /// Fetches paginated loyalty transactions and stores them in
+  /// [loyaltyTransactions].
+  ///
+  /// FIX: was previously typed as `Future<void>` but callers were assigning
+  /// its return value to a local variable and then trying to use it.  The
+  /// result is already stored in [loyaltyTransactions] so callers can just
+  /// read that observable directly after awaiting this method.
   Future<void> fetchLoyaltyTransactions({
     required String customerId,
     int page = 0,
@@ -339,7 +316,7 @@ class AccountController extends GetxController {
         'points': points,
         'description': description,
       });
-      // Reload the latest transactions to reflect the change.
+      // Reload to reflect change and get the server-assigned id.
       await fetchLoyaltyTransactions(customerId: customerId);
     } on PostgrestException catch (e, s) {
       throw ErrorHandler.handle(e, s);

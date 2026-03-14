@@ -7,7 +7,6 @@ import '../../../controllers/admin_controller.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_text_styles.dart';
-import '../../../core/extensions/context_extensions.dart';
 import 'package:marcat/models/enums.dart';
 import '../../shared/widgets/marcat_app_bar.dart';
 import '../../shared/widgets/marcat_button.dart';
@@ -78,8 +77,8 @@ class _StaffFormScreenState extends State<StaffFormScreen> {
       builder: (context) {
         return Scaffold(
           backgroundColor: AppColors.surfaceGrey,
-          appBar: MarcatAppBar(
-            title: context.l10n.addStaff,
+          appBar: const MarcatAppBar(
+            title: 'Add Staff',
             centerTitle: false,
           ),
           body: SingleChildScrollView(

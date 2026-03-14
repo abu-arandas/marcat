@@ -5,7 +5,6 @@ import 'package:marcat/models/enums.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_text_styles.dart';
-import '../../../core/extensions/context_extensions.dart';
 
 class MarcatOrderStepper extends StatelessWidget {
   const MarcatOrderStepper({
@@ -31,7 +30,7 @@ class MarcatOrderStepper extends StatelessWidget {
             const Icon(Icons.cancel, color: AppColors.statusRed),
             const SizedBox(width: AppDimensions.space8),
             Text(
-              context.l10n.statusCancelled,
+              'Cancelled',
               style: AppTextStyles.labelMedium
                   .copyWith(color: AppColors.statusRed),
             ),
@@ -54,23 +53,23 @@ class MarcatOrderStepper extends StatelessWidget {
       children: [
         _buildStep(
           context,
-          title: context.l10n.saleConfirmed,
+          title: 'Sale Confirmed',
           isActive: currentStep >= 1,
           isFirst: true,
         ),
         _buildStep(
           context,
-          title: context.l10n.saleProcessing,
+          title: 'Sale Processing',
           isActive: currentStep >= 2,
         ),
         _buildStep(
           context,
-          title: context.l10n.saleShipped,
+          title: 'Sale Shipped',
           isActive: currentStep >= 3,
         ),
         _buildStep(
           context,
-          title: context.l10n.saleDelivered,
+          title: 'Sale Delivered',
           isActive: currentStep >= 4,
           isLast: true,
         ),

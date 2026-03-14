@@ -1,22 +1,20 @@
 // lib/views/customer/wishlist_page.dart
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bootstrap5/flutter_bootstrap5.dart';
 import 'package:get/get.dart';
-// FIX: wishlist_repository.dart → product_controller.dart (merged)
+
 import 'package:marcat/controllers/product_controller.dart';
-// FIX: product_repository.dart merged into ProductController
-// FIX: cart_repository.dart → cart_controller.dart
-import 'package:marcat/controllers/cart_controller.dart';
-import 'package:marcat/controllers/auth_controller.dart'; // FIX: auth_provider.dart → auth_controller.dart
+import 'package:marcat/controllers/auth_controller.dart';
 import 'package:marcat/models/product_model.dart';
-import 'package:marcat/models/cart_item_model.dart';
+import 'package:marcat/core/router/app_router.dart';
+import 'package:marcat/core/extensions/currency_extensions.dart';
 
 import 'scaffold/app_scaffold.dart';
 import 'shared/brand.dart';
 import 'shared/empty_state.dart';
 import 'shared/section_header.dart';
-import 'package:marcat/core/router/app_router.dart';
 
 class WishlistPage extends StatefulWidget {
   const WishlistPage({super.key});
@@ -30,10 +28,12 @@ class _WishlistPageState extends State<WishlistPage> {
   bool isLoading = true;
 
   ProductController get _productCtrl => Get.find<ProductController>();
-  CartController get _cart => Get.find<CartController>();
   AuthController get _auth => Get.find<AuthController>();
 
-  String? get _userId => _auth.currentAuthUser?.id;
+  // FIX: was using _auth.currentAuthUser?.id (raw Supabase User).
+  // Use the controller's typed state instead — consistent with the rest of
+  // the app and does not require a raw Supabase import.
+  String? get _userId => _auth.state.value.user?.id;
 
   @override
   void initState() {
@@ -49,6 +49,8 @@ class _WishlistPageState extends State<WishlistPage> {
     }
     if (mounted) setState(() => isLoading = true);
     try {
+      // Ensure the wishlist observable is up to date.
+      await _productCtrl.loadWishlist(uid);
       final wishItems = _productCtrl.wishlistItems;
       if (wishItems.isEmpty) {
         if (mounted) {
@@ -63,8 +65,9 @@ class _WishlistPageState extends State<WishlistPage> {
       final fetched = await _productCtrl.fetchProductsByIds(ids);
       if (mounted) {
         setState(() {
-          products.clear();
-          products.addAll(fetched);
+          products
+            ..clear()
+            ..addAll(fetched);
           isLoading = false;
         });
       }
@@ -80,35 +83,20 @@ class _WishlistPageState extends State<WishlistPage> {
     try {
       await _productCtrl.removeFromWishlist(uid, productId);
       if (mounted) {
-        setState(() {
-          products.removeWhere((p) => p.id == productId);
-        });
+        setState(() => products.removeWhere((p) => p.id == productId));
       }
     } catch (e) {
       Get.snackbar('Error', e.toString());
     }
   }
 
-  void addToCart(ProductModel product) {
-    _cart.addItem(CartItemModel(
-      productSizeId: product.id, // placeholder
-      productId: product.id,
-      productName: product.name,
-      sizeLabel: '',
-      colorName: '',
-      colorId: 0,
-      primaryImageUrl: product.primaryImageUrl,
-      unitPrice: product.basePrice,
-      quantity: 1,
-    ));
-    Get.snackbar(
-      'Added to Bag',
-      '${product.name} has been added to your bag.',
-      snackPosition: SnackPosition.TOP,
-      backgroundColor: kNavy,
-      colorText: Colors.white,
-      icon: const Icon(Icons.check_circle_outline_rounded, color: Colors.white),
-    );
+  // FIX: was calling _cart.addItem(CartItemModel(productSizeId: product.id ...))
+  // which is a type-level bug — product.id ≠ productSizeId.  Worse, no size
+  // was selected, so the order would reference a non-existent size variant.
+  // Correct behaviour: navigate to the product detail page so the user can
+  // select a size before adding to cart.
+  void viewProduct(int productId) {
+    Get.toNamed(AppRoutes.productOf(productId));
   }
 
   @override
@@ -116,103 +104,62 @@ class _WishlistPageState extends State<WishlistPage> {
     return CustomerScaffold(
       page: 'Wishlist',
       pageImage:
-          'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1600&q=80',
+          'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=1600&q=80',
       body: _WishlistBody(
         products: products,
         isLoading: isLoading,
         onRemove: removeFromWishlist,
-        onAddToCart: addToCart,
+        onViewProduct: viewProduct,
       ),
     );
   }
 }
 
-class _WishlistBody extends StatelessWidget {
-  final List<ProductModel> products;
-  final bool isLoading;
-  final Function(int) onRemove;
-  final Function(ProductModel) onAddToCart;
+// ─────────────────────────────────────────────────────────────────────────────
+// _WishlistBody
+// ─────────────────────────────────────────────────────────────────────────────
 
+class _WishlistBody extends StatelessWidget {
   const _WishlistBody({
     required this.products,
     required this.isLoading,
     required this.onRemove,
-    required this.onAddToCart,
+    required this.onViewProduct,
   });
+
+  final List<ProductModel> products;
+  final bool isLoading;
+  final void Function(int) onRemove;
+  final void Function(int) onViewProduct;
 
   @override
   Widget build(BuildContext context) {
-    final auth = Get.find<AuthController>();
+    final isDesktop = MediaQuery.sizeOf(context).width > 1024;
 
-    return Obx(() {
-      // Not logged in
-      if (auth.currentAuthUser == null) {
-        return EmptyState(
-          icon: Icons.favorite_outline_rounded,
-          title: 'Sign In to See Your Wishlist',
-          subtitle:
-              'Create an account or sign in to save your favourite pieces.',
-          actionLabel: 'Sign In',
-          onAction: () => Get.toNamed(AppRoutes.login),
-        );
-      }
-
-      // Loading
-      if (isLoading) {
-        return const Padding(
-          padding: EdgeInsets.symmetric(vertical: 80),
-          child: Center(
-            child: CircularProgressIndicator(color: kNavy, strokeWidth: 2),
-          ),
-        );
-      }
-
-      // Empty
-      if (products.isEmpty) {
-        return EmptyState(
-          icon: Icons.favorite_border_rounded,
-          title: 'Your Wishlist Is Empty',
-          subtitle:
-              'Save your favourite pieces here to come back to them later.',
-          actionLabel: 'Start Shopping',
-          onAction: () => Get.toNamed(AppRoutes.shop),
-        );
-      }
-
-      final isDesktop = MediaQuery.sizeOf(context).width > 768;
-
-      return FB5Container(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 40),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  SectionHeader(
-                    eyebrow: 'Saved Items',
-                    title: 'My Wishlist',
-                    subtitle:
-                        '${products.length} item${products.length == 1 ? '' : 's'} saved',
-                  ),
-                  const Spacer(),
-                  TextButton(
-                    onPressed: () => Get.toNamed(AppRoutes.shop),
-                    style: TextButton.styleFrom(foregroundColor: kNavy),
-                    child: const Row(
-                      children: [
-                        Text('Continue Shopping',
-                            style: TextStyle(
-                                fontSize: 13, fontWeight: FontWeight.w700)),
-                        SizedBox(width: 4),
-                        Icon(Icons.arrow_forward_rounded, size: 14),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 36),
+    return FB5Container(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(
+              eyebrow: 'Your Saved Items',
+              title: 'Wishlist',
+              subtitle:
+                  '${products.length} item${products.length == 1 ? '' : 's'}',
+            ),
+            const SizedBox(height: 32),
+            if (isLoading)
+              const Center(child: CircularProgressIndicator())
+            else if (products.isEmpty)
+              EmptyState(
+                icon: Icons.favorite_outline_rounded,
+                title: 'Your wishlist is empty',
+                subtitle: 'Save items you love by tapping the heart icon.',
+                actionLabel: 'Start Shopping',
+                onAction: () => Get.toNamed(AppRoutes.shop),
+              )
+            else
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -220,33 +167,36 @@ class _WishlistBody extends StatelessWidget {
                   crossAxisCount: isDesktop ? 4 : 2,
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 24,
-                  childAspectRatio: 0.55,
+                  childAspectRatio: 0.62,
                 ),
                 itemCount: products.length,
                 itemBuilder: (_, i) => _WishlistCard(
                   product: products[i],
-                  onRemove: onRemove,
-                  onAddToCart: onAddToCart,
+                  onRemove: () => onRemove(products[i].id),
+                  onViewProduct: () => onViewProduct(products[i].id),
                 ),
               ),
-            ],
-          ),
+          ],
         ),
-      );
-    });
+      ),
+    );
   }
 }
 
-class _WishlistCard extends StatefulWidget {
-  final ProductModel product;
-  final Function(int) onRemove;
-  final Function(ProductModel) onAddToCart;
+// ─────────────────────────────────────────────────────────────────────────────
+// _WishlistCard
+// ─────────────────────────────────────────────────────────────────────────────
 
+class _WishlistCard extends StatefulWidget {
   const _WishlistCard({
     required this.product,
     required this.onRemove,
-    required this.onAddToCart,
+    required this.onViewProduct,
   });
+
+  final ProductModel product;
+  final VoidCallback onRemove;
+  final VoidCallback onViewProduct;
 
   @override
   State<_WishlistCard> createState() => _WishlistCardState();
@@ -260,129 +210,110 @@ class _WishlistCardState extends State<_WishlistCard> {
         cursor: SystemMouseCursors.click,
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: Stack(fit: StackFit.expand, children: [
-                  GestureDetector(
-                    onTap: () =>
-                        Get.toNamed('/app/product/${widget.product.id}'),
-                    child: AnimatedScale(
-                      scale: _hovered ? 1.06 : 1.0,
-                      duration: const Duration(milliseconds: 600),
-                      curve: Curves.easeOutCubic,
-                      child: widget.product.primaryImageUrl != null
-                          ? Image.network(
-                              widget.product.primaryImageUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
+        child: GestureDetector(
+          onTap: widget.onViewProduct,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Image
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      AnimatedScale(
+                        scale: _hovered ? 1.06 : 1.0,
+                        duration: const Duration(milliseconds: 600),
+                        curve: Curves.easeOutCubic,
+                        child: widget.product.primaryImageUrl != null
+                            ? CachedNetworkImage(
+                                imageUrl: widget.product.primaryImageUrl!,
+                                fit: BoxFit.cover,
+                                placeholder: (_, __) =>
+                                    Container(color: kCream),
+                                errorWidget: (_, __, ___) => Container(
+                                    color: kCream,
+                                    child: const Icon(Icons.image_outlined,
+                                        color: kSlate, size: 32)),
+                              )
+                            : Container(
                                 color: kCream,
                                 child: const Icon(Icons.image_outlined,
-                                    color: kSlate, size: 32),
-                              ),
-                            )
-                          : Container(color: kCream),
-                    ),
-                  ),
-
-                  // Remove button
-                  Positioned(
-                    top: 10,
-                    right: 10,
-                    child: GestureDetector(
-                      onTap: () => widget.onRemove(widget.product.id),
-                      child: Container(
-                        width: 34,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.favorite_rounded,
-                            size: 16, color: kRed),
+                                    color: kSlate, size: 32)),
                       ),
-                    ),
-                  ),
 
-                  // Add to bag overlay
-                  AnimatedOpacity(
-                    opacity: _hovered ? 1 : 0,
-                    duration: const Duration(milliseconds: 200),
-                    child: Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: GestureDetector(
-                        onTap: () => widget.onAddToCart(widget.product),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          color: kNavy,
-                          child: const Center(
-                            child: Text(
-                              'ADD TO BAG',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 2,
+                      // Remove from wishlist button
+                      Positioned(
+                        top: 10,
+                        right: 10,
+                        child: GestureDetector(
+                          onTap: widget.onRemove,
+                          child: Container(
+                            width: 34,
+                            height: 34,
+                            decoration: const BoxDecoration(
+                              color: kNavy,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.favorite_rounded,
+                                size: 16, color: Colors.white),
+                          ),
+                        ),
+                      ),
+
+                      // "View & Add to Cart" overlay — navigates to detail
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: AnimatedOpacity(
+                          opacity: _hovered ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 200),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            color: kNavy.withOpacity(0.85),
+                            child: const Center(
+                              child: Text(
+                                'Select Size & Add',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.5,
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                ]),
+                ),
               ),
-            ),
 
-            const SizedBox(height: 12),
-            const Text('COLLECTION',
-                style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: kSlate,
-                    letterSpacing: 1.5)),
-            const SizedBox(height: 4),
-            Text(
-              widget.product.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                  fontSize: 14,
+              const SizedBox(height: 10),
+              Text(
+                widget.product.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: kNavy,
-                  height: 1.3),
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Text(
-                  'JOD ${widget.product.basePrice.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w700, color: kNavy),
                 ),
-                const Spacer(),
-                // Quick add
-                GestureDetector(
-                  onTap: () => widget.onAddToCart(widget.product),
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: kNavy,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Icon(Icons.shopping_bag_outlined,
-                        size: 14, color: Colors.white),
-                  ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                widget.product.basePrice.toJOD(),
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: kSlate,
                 ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       );
 }

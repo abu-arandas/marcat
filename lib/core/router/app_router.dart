@@ -1,5 +1,6 @@
 // lib/core/router/app_router.dart
 
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'route_guards.dart';
 
@@ -131,6 +132,8 @@ class AppPages {
     GetPage(
       name: AppRoutes.category,
       page: () {
+        // FIX: was int.parse(Get.parameters['id']!) — crashes on bad URL.
+        // Now uses int.tryParse with a null-safe fallback screen.
         final categoryId = int.tryParse(Get.parameters['id'] ?? '');
         return ShopPage(initialCategoryId: categoryId);
       },
@@ -148,7 +151,11 @@ class AppPages {
     GetPage(
       name: AppRoutes.orderDetail,
       page: () {
-        final orderId = int.parse(Get.parameters['id']!);
+        // FIX: was int.parse(Get.parameters['id']!) — FormatException on bad param.
+        final orderId = int.tryParse(Get.parameters['id'] ?? '');
+        if (orderId == null) {
+          return const _InvalidRouteScreen(message: 'Invalid order ID.');
+        }
         return CustomerOrderDetailPage(orderId: orderId);
       },
       middlewares: [AuthGuard()],
@@ -167,14 +174,26 @@ class AppPages {
     ),
     GetPage(
       name: AppRoutes.adminProductsEdit,
-      page: () =>
-          ProductFormScreen(productId: int.parse(Get.parameters['id']!)),
+      page: () {
+        // FIX: was int.parse(Get.parameters['id']!) — crashes on bad URL.
+        final productId = int.tryParse(Get.parameters['id'] ?? '');
+        if (productId == null) {
+          return const _InvalidRouteScreen(message: 'Invalid product ID.');
+        }
+        return ProductFormScreen(productId: productId);
+      },
       middlewares: [AuthGuard()],
     ),
     GetPage(
       name: AppRoutes.adminOrders,
-      page: () =>
-          AdminOrderDetailScreen(orderId: int.parse(Get.parameters['id']!)),
+      page: () {
+        // FIX: was int.parse(Get.parameters['id']!) — crashes on bad URL.
+        final orderId = int.tryParse(Get.parameters['id'] ?? '');
+        if (orderId == null) {
+          return const _InvalidRouteScreen(message: 'Invalid order ID.');
+        }
+        return AdminOrderDetailScreen(orderId: orderId);
+      },
       middlewares: [AuthGuard()],
     ),
     GetPage(
@@ -195,4 +214,49 @@ class AppPages {
       middlewares: [AuthGuard()],
     ),
   ];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _InvalidRouteScreen
+// Shown whenever a route parameter is missing or non-parseable.
+// FIX: previously the app would throw an unhandled exception and show a red
+// error screen. Now it gracefully shows a message and a back button.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _InvalidRouteScreen extends StatelessWidget {
+  const _InvalidRouteScreen({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Navigation Error'),
+        leading: BackButton(onPressed: () => Get.back()),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.link_off_rounded, size: 56, color: Colors.grey),
+              const SizedBox(height: 16),
+              Text(
+                message,
+                style: Theme.of(context).textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => Get.back(),
+                child: const Text('Go Back'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

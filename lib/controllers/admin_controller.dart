@@ -5,12 +5,11 @@
 //         commission_repository   (fetchCommissions, approveCommission)
 //         store_repository        (CRUD stores, assign/remove products)
 //         inventory_repository    (fetchInventory, update quantities)
-//
-// Delete those five files — everything lives here now.
 
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
+import 'package:marcat/controllers/auth_controller.dart';
 import 'package:marcat/core/constants/supabase_constants.dart';
 import 'package:marcat/core/error_handler.dart';
 import 'package:marcat/models/commission_model.dart';
@@ -18,9 +17,6 @@ import 'package:marcat/models/enums.dart';
 import 'package:marcat/models/inventory_model.dart';
 import 'package:marcat/models/staff_model.dart';
 import 'package:marcat/models/store_model.dart';
-
-const _inventoryFields =
-    'id, store_id, product_size_id, color_id, available, reserved, updated_at';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AdminController
@@ -52,8 +48,24 @@ class AdminController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    fetchStaff();
-    fetchStores();
+    // FIX: onInit was calling fetchStaff() and fetchStores() unconditionally
+    // for every user including customers. Since AdminController is lazy-put
+    // with fenix:true it only instantiates when first accessed, but once it
+    // is accessed (e.g. by the POS PIN screen checking isAdmin) it would fire
+    // two expensive Supabase queries for non-admin users who have no RLS
+    // permission, causing PostgrestExceptions in the log.
+    //
+    // Guard: only prefetch if the current user actually has admin/store_manager
+    // or salesperson rights.
+    final auth = Get.find<AuthController>().state.value;
+    if (auth.isAdmin || auth.isStoreManager) {
+      fetchStaff();
+      fetchStores();
+    } else if (auth.isSalesperson) {
+      // Salesperson only needs the store list for context.
+      fetchStores();
+    }
+    // Customers and drivers never use AdminController data — no prefetch.
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -268,8 +280,8 @@ class AdminController extends GetxController {
   Future<void> updateStore(int id, Map<String, dynamic> data) async {
     try {
       await _client.from(SupabaseConstants.stores).update(data).eq('id', id);
-      final idx = stores.indexWhere((s) => s.id == id);
-      if (idx >= 0) await fetchStores(); // reload to get updated_at etc.
+      // Reload to get server-updated timestamps.
+      await fetchStores();
     } on sb.PostgrestException catch (e, s) {
       throw ErrorHandler.handle(e, s);
     }
@@ -343,8 +355,6 @@ class AdminController extends GetxController {
   }
 
   /// Updates the available quantity for a single inventory record.
-  /// The `available` column is the correct target — `updated_at` is
-  /// auto-set by the DB trigger.
   Future<void> updateInventoryQuantity(
       int inventoryId, int newAvailable) async {
     try {
@@ -363,42 +373,12 @@ class AdminController extends GetxController {
   /// Bulk-updates available quantities in parallel.
   ///
   /// Each map must have `id` (int) and `available` (int) keys.
-  Future<void> bulkUpdateInventoryQuantity(
-      List<Map<String, dynamic>> updates) async {
-    if (updates.isEmpty) return;
+  Future<void> bulkUpdateInventory(List<Map<String, int>> updates) async {
     try {
       await Future.wait(
-        updates.map(
-          (u) => _client.from(SupabaseConstants.inventory).update({
-            'available': (u['available'] ?? u['quantity']) as int
-          }).eq('id', u['id'] as int),
-        ),
+        updates.map((u) => updateInventoryQuantity(u['id']!, u['available']!)),
       );
-      // Reflect changes in local state.
-      for (final u in updates) {
-        final id = u['id'] as int;
-        final qty = (u['available'] ?? u['quantity']) as int;
-        final idx = inventory.indexWhere((i) => i.id == id);
-        if (idx >= 0) inventory[idx] = inventory[idx].copyWith(available: qty);
-      }
-    } on sb.PostgrestException catch (e, s) {
-      throw ErrorHandler.handle(e, s);
-    }
-  }
-
-  /// Fetches a specific inventory record for a (productSizeId, storeId) pair.
-  Future<InventoryModel?> fetchInventoryRecord(
-      int productSizeId, int storeId) async {
-    try {
-      final data = await _client
-          .from(SupabaseConstants.inventory)
-          .select(_inventoryFields)
-          .eq('product_size_id', productSizeId)
-          .eq('store_id', storeId)
-          .maybeSingle();
-      if (data == null) return null;
-      return InventoryModel.fromJson(data);
-    } on sb.PostgrestException catch (e, s) {
+    } catch (e, s) {
       throw ErrorHandler.handle(e, s);
     }
   }

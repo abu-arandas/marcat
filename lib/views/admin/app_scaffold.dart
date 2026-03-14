@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bootstrap5/flutter_bootstrap5.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_dimensions.dart';
-import '../../core/extensions/context_extensions.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'products/product_list_screen.dart';
 import 'orders/order_list_screen.dart';
@@ -77,28 +76,28 @@ class _AdminAppScaffoldState extends State<AdminAppScaffold> {
                           ),
                         )
                       : const SizedBox(height: AppDimensions.space24),
-                  destinations: [
+                  destinations: const [
                     NavigationRailDestination(
-                      icon: const Icon(Icons.dashboard_outlined),
-                      selectedIcon: const Icon(Icons.dashboard),
-                      label: Text(context.l10n.adminDashboard),
+                      icon: Icon(Icons.dashboard_outlined),
+                      selectedIcon: Icon(Icons.dashboard),
+                      label: Text('Admin Dashboard'),
                     ),
                     NavigationRailDestination(
-                      icon: const Icon(Icons.inventory_2_outlined),
-                      selectedIcon: const Icon(Icons.inventory_2),
-                      label: Text(context.l10n.adminProducts),
+                      icon: Icon(Icons.inventory_2_outlined),
+                      selectedIcon: Icon(Icons.inventory_2),
+                      label: Text('Admin Products'),
                     ),
                     NavigationRailDestination(
-                      icon: const Icon(Icons.receipt_long_outlined),
-                      selectedIcon: const Icon(Icons.receipt_long),
-                      label: Text(context.l10n.adminOrders),
+                      icon: Icon(Icons.receipt_long_outlined),
+                      selectedIcon: Icon(Icons.receipt_long),
+                      label: Text('Admin Orders'),
                     ),
-                    const NavigationRailDestination(
+                    NavigationRailDestination(
                       icon: Icon(Icons.group_outlined),
                       selectedIcon: Icon(Icons.group),
                       label: Text('Staff'),
                     ),
-                    const NavigationRailDestination(
+                    NavigationRailDestination(
                       icon: Icon(Icons.settings_outlined),
                       selectedIcon: Icon(Icons.settings),
                       label: Text('Settings'),
@@ -132,28 +131,28 @@ class _AdminAppScaffoldState extends State<AdminAppScaffold> {
             selectedIndex: currentIndex,
             onDestinationSelected: _onTap,
             backgroundColor: AppColors.marcatCream,
-            destinations: [
+            destinations: const [
               NavigationDestination(
-                icon: const Icon(Icons.dashboard_outlined),
-                selectedIcon: const Icon(Icons.dashboard),
-                label: context.l10n.adminDashboard,
+                icon: Icon(Icons.dashboard_outlined),
+                selectedIcon: Icon(Icons.dashboard),
+                label: 'Admin Dashboard',
               ),
               NavigationDestination(
-                icon: const Icon(Icons.inventory_2_outlined),
-                selectedIcon: const Icon(Icons.inventory_2),
-                label: context.l10n.adminProducts,
+                icon: Icon(Icons.inventory_2_outlined),
+                selectedIcon: Icon(Icons.inventory_2),
+                label: 'Admin Products',
               ),
               NavigationDestination(
-                icon: const Icon(Icons.receipt_long_outlined),
-                selectedIcon: const Icon(Icons.receipt_long),
-                label: context.l10n.adminOrders,
+                icon: Icon(Icons.receipt_long_outlined),
+                selectedIcon: Icon(Icons.receipt_long),
+                label: 'Admin Orders',
               ),
-              const NavigationDestination(
+              NavigationDestination(
                 icon: Icon(Icons.group_outlined),
                 selectedIcon: Icon(Icons.group),
                 label: 'Staff',
               ),
-              const NavigationDestination(
+              NavigationDestination(
                 icon: Icon(Icons.settings_outlined),
                 selectedIcon: Icon(Icons.settings),
                 label: 'Settings',

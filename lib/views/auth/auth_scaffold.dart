@@ -1,6 +1,7 @@
 // lib/views/auth/auth_scaffold.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bootstrap5/flutter_bootstrap5.dart';
 import 'package:get/get.dart';
 
 class AuthScaffold extends StatefulWidget {
@@ -51,118 +52,113 @@ class _AuthScaffoldState extends State<AuthScaffold>
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
-    final isWide = size.width >= 767;
-
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FB),
-      body: Row(
+      body: FB5Row(
         children: [
-          if (isWide)
-            Expanded(
-              flex: 3,
-              child: Stack(
-                fit: StackFit.expand,
+          // ── Left panel — marketing / branding ──────────────────────────
+          FB5Col(
+            classNames: 'col-md-7 col-lg-8 d-none d-md-block',
+            child: Container(
+              width: double.infinity,
+              height: MediaQuery.sizeOf(context).height,
+              padding: const EdgeInsets.all(48),
+              decoration: BoxDecoration(
+                image: const DecorationImage(
+                  image: AssetImage('assets/images/auth_background.jpg'),
+                  fit: BoxFit.cover,
+                ),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xAA1C2B4B), Color(0xF01C2B4B)],
+                  stops: [0.0, 1.0],
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Layer 1 — background photo
                   Image.asset(
-                    'assets/images/auth_background.jpg',
-                    fit: BoxFit.cover,
+                    'assets/images/logo.png',
+                    height: 100,
+                    width: 200,
+                    color: Colors.white,
                   ),
-
-                  // Layer 2 — dark gradient overlay
-                  const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Color(0xAA1C2B4B), Color(0xF01C2B4B)],
-                        stops: [0.0, 1.0],
+                  const Spacer(),
+                  const Text(
+                    'Fast.\nReliable.\nDelivered.',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 52,
+                      fontWeight: FontWeight.w700,
+                      height: 1.1,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Manage orders, track deliveries, and\n'
+                    'grow your business — all in one place.',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.78),
+                      fontSize: 16,
+                      height: 1.65,
+                    ),
+                  ),
+                  const SizedBox(height: 36),
+                  const Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      _FeaturePill(
+                        icon: Icons.bolt_rounded,
+                        label: 'Real-time tracking',
                       ),
-                    ),
+                      _FeaturePill(
+                        icon: Icons.shield_rounded,
+                        label: 'Secure platform',
+                      ),
+                      _FeaturePill(
+                        icon: Icons.analytics_rounded,
+                        label: 'Smart analytics',
+                      ),
+                    ],
                   ),
-
-                  // Layer 3 — content
-                  Padding(
-                    padding: const EdgeInsets.all(48),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Image.asset(
-                          'assets/images/logo.png',
-                          height: 100,
-                          width: 200,
-                          color: Colors.white,
-                        ),
-                        const Spacer(),
-                        const Text(
-                          'Fast.\nReliable.\nDelivered.',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 52,
-                            fontWeight: FontWeight.w700,
-                            height: 1.1,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        Text(
-                          'Manage orders, track deliveries, and\n'
-                          'grow your business — all in one place.',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.78),
-                            fontSize: 16,
-                            height: 1.65,
-                          ),
-                        ),
-                        const SizedBox(height: 36),
-                        const Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: [
-                            _FeaturePill(
-                                icon: Icons.bolt_rounded,
-                                label: 'Real-time tracking'),
-                            _FeaturePill(
-                                icon: Icons.shield_rounded,
-                                label: 'Secure platform'),
-                            _FeaturePill(
-                                icon: Icons.analytics_rounded,
-                                label: 'Smart analytics'),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                      ],
-                    ),
-                  ),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
+          ),
 
           // ── Right panel — form ──────────────────────────────────────────
-          Expanded(
-            flex: 2,
+          FB5Col(
+            // Full width on xs/sm; remaining columns on md+
+            classNames: 'col-12 col-md-5 col-lg-4',
             child: FadeTransition(
               opacity: _fade,
               child: SlideTransition(
                 position: _slide,
                 child: SizedBox(
-                  height: size.height,
+                  height: MediaQuery.sizeOf(context).height,
                   child: Scrollbar(
                     thumbVisibility: false,
                     controller: _scrollController,
                     child: SingleChildScrollView(
                       controller: _scrollController,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 28, vertical: 40),
+                        horizontal: 28,
+                        vertical: 40,
+                      ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           IconButton(
                             onPressed: () => Get.back(),
-                            icon: const Icon(Icons.arrow_back_ios_rounded,
-                                size: 18),
+                            icon: const Icon(
+                              Icons.arrow_back_ios_rounded,
+                              size: 18,
+                            ),
                             style: IconButton.styleFrom(
                               backgroundColor: AuthTheme.surface,
                               foregroundColor: AuthTheme.primary,
@@ -261,11 +257,12 @@ class AuthTheme {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: error, width: 2),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
       );
 
-  // FIX: were non-const TextStyle instances — made const (no runtime values)
   static const TextStyle bodyStyle = TextStyle(fontSize: 15, color: muted);
 
   static const TextStyle buttonLabel = TextStyle(

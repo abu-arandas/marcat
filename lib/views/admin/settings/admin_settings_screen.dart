@@ -1,11 +1,21 @@
-// lib/presentation/admin/settings/admin_settings_screen.dart
+// lib/views/admin/settings/admin_settings_screen.dart
+//
+// FIX 1: Removed direct Supabase.instance.client.auth.currentUser access.
+//         Was bypassing AuthController, not reactive to sign-out, and
+//         returned the raw supabase_flutter User type instead of UserModel.
+//         Now uses Get.find<AuthController>().state which is reactive.
+//
+// FIX 2: Removed unused `import 'package:supabase_flutter/supabase_flutter.dart'`.
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:marcat/models/enums.dart';
+
+import '../../../controllers/auth_controller.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../models/user_model.dart';
 import '../../shared/widgets/marcat_app_bar.dart';
 import 'package:marcat/core/router/app_router.dart';
 
@@ -14,12 +24,15 @@ class AdminSettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = Supabase.instance.client.auth.currentUser;
+    // FIX: was Supabase.instance.client.auth.currentUser — bypassed AuthController.
+    // Now reads from the reactive AuthController state, consistent with the
+    // rest of the app and properly reactive to sign-out events.
+    final authCtrl = Get.find<AuthController>();
 
     return Scaffold(
       backgroundColor: AppColors.surfaceGrey,
       appBar: MarcatAppBar(
-        title: "Admin Settings",
+        title: 'Admin Settings',
         centerTitle: false,
       ),
       body: SingleChildScrollView(
@@ -30,8 +43,15 @@ class AdminSettingsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildProfileHeader(user),
+                // FIX: wrapped in Obx so the header reacts to auth state changes
+                // (e.g. avatar upload, name update, sign-out).
+                Obx(() {
+                  final user = authCtrl.state.value.user;
+                  return _buildProfileHeader(user);
+                }),
+
                 const SizedBox(height: AppDimensions.space24),
+
                 _buildSettingsSection(
                   title: 'Store Configuration',
                   icon: Icons.storefront,
@@ -56,7 +76,9 @@ class AdminSettingsScreen extends StatelessWidget {
                     ),
                   ],
                 ),
+
                 const SizedBox(height: AppDimensions.space24),
+
                 _buildSettingsSection(
                   title: 'System Settings',
                   icon: Icons.settings_applications,
@@ -71,37 +93,39 @@ class AdminSettingsScreen extends StatelessWidget {
                       title: 'Language',
                       subtitle: 'App display language',
                       icon: Icons.language,
-                      trailing:
-                          Text('English', style: AppTextStyles.labelLarge),
+                      onTap: () {},
+                    ),
+                    _SettingsItem(
+                      title: 'Security',
+                      subtitle: 'Password, two-factor authentication',
+                      icon: Icons.security_outlined,
                       onTap: () {},
                     ),
                   ],
                 ),
+
                 const SizedBox(height: AppDimensions.space24),
+
                 _buildSettingsSection(
-                  title: 'Account Actions',
-                  icon: Icons.account_circle,
+                  title: 'Account',
+                  icon: Icons.manage_accounts_outlined,
                   items: [
                     _SettingsItem(
-                      title: 'Change Password',
-                      subtitle: 'Update your admin account password',
-                      icon: Icons.lock_outline,
-                      onTap: () {},
+                      title: 'Edit Profile',
+                      subtitle: 'Update your name, avatar, and contact info',
+                      icon: Icons.person_outline,
+                      onTap: () => Get.toNamed(AppRoutes.profile),
                     ),
                     _SettingsItem(
                       title: 'Sign Out',
-                      subtitle: 'End your current session safely',
-                      icon: Icons.logout,
+                      subtitle: 'Sign out of your admin account',
+                      icon: Icons.logout_rounded,
                       iconColor: AppColors.statusRed,
-                      textColor: AppColors.statusRed,
-                      onTap: () {
-                        // Implement sign out using existing auth mechanism
-                        Supabase.instance.client.auth.signOut();
-                        Get.offAllNamed(AppRoutes.login);
-                      },
+                      onTap: () => Get.find<AuthController>().signOut(),
                     ),
                   ],
                 ),
+
                 const SizedBox(height: AppDimensions.space32),
               ],
             ),
@@ -111,129 +135,146 @@ class AdminSettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildProfileHeader(User? user) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppDimensions.radiusM),
-        side: const BorderSide(color: AppColors.borderLight),
+  // ─────────────────────────────────────────────────────────────────────────
+  // Profile header
+  // FIX: parameter changed from supabase_flutter.User? to UserModel?
+  // ─────────────────────────────────────────────────────────────────────────
+  Widget _buildProfileHeader(UserModel? user) {
+    return Container(
+      padding: const EdgeInsets.all(AppDimensions.space24),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceWhite,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusS),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppDimensions.space24),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: AppColors.marcatGold.withOpacity(0.2),
-              child: const Icon(Icons.manage_accounts,
-                  size: 40, color: AppColors.marcatGold),
-            ),
-            const SizedBox(width: AppDimensions.space24),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Administrator', style: AppTextStyles.titleLarge),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.email_outlined,
-                          size: 16, color: AppColors.textSecondary),
-                      const SizedBox(width: 8),
-                      Text(
-                        user?.email ?? 'Unknown Email',
-                        style: AppTextStyles.bodyMedium
-                            .copyWith(color: AppColors.textSecondary),
-                      ),
-                    ],
+      child: Row(
+        children: [
+          // Avatar
+          CircleAvatar(
+            radius: 32,
+            backgroundColor: AppColors.borderMedium,
+            backgroundImage:
+                user?.avatarUrl != null ? NetworkImage(user!.avatarUrl!) : null,
+            child: user?.avatarUrl == null
+                ? Text(
+                    user?.firstName.isNotEmpty == true
+                        ? user!.firstName[0].toUpperCase()
+                        : 'A',
+                    style: AppTextStyles.headlineMedium,
+                  )
+                : null,
+          ),
+          const SizedBox(width: AppDimensions.space16),
+
+          // Name & role
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user?.fullName ?? 'Admin',
+                  style: AppTextStyles.titleMedium,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  user?.role.dbValue.replaceAll('_', ' ').toUpperCase() ??
+                      'ADMIN',
+                  style: AppTextStyles.labelSmall.copyWith(
+                    color: AppColors.textSecondary,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Settings section builder
+  // ─────────────────────────────────────────────────────────────────────────
   Widget _buildSettingsSection({
     required String title,
     required IconData icon,
     required List<_SettingsItem> items,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 8.0, bottom: 12.0),
-          child: Row(
-            children: [
-              Icon(icon, size: 20, color: AppColors.marcatGold),
-              const SizedBox(width: 8),
-              Text(title, style: AppTextStyles.titleMedium),
-            ],
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceWhite,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusS),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppDimensions.space16,
+              AppDimensions.space16,
+              AppDimensions.space16,
+              AppDimensions.space8,
+            ),
+            child: Row(
+              children: [
+                Icon(icon, size: 18, color: AppColors.textSecondary),
+                const SizedBox(width: AppDimensions.space8),
+                Text(title, style: AppTextStyles.titleSmall),
+              ],
+            ),
           ),
-        ),
-        Card(
-          elevation: 0,
-          clipBehavior: Clip.antiAlias,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppDimensions.radiusM),
-            side: const BorderSide(color: AppColors.borderLight),
-          ),
-          child: ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: items.length,
-            separatorBuilder: (context, index) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              final item = items[index];
-              return ListTile(
-                leading: Icon(item.icon,
-                    color: item.iconColor ?? AppColors.textPrimary),
-                title: Text(
-                  item.title,
-                  style:
-                      AppTextStyles.bodyLarge.copyWith(color: item.textColor),
-                ),
-                subtitle: Text(
-                  item.subtitle,
-                  style: AppTextStyles.bodyMedium
-                      .copyWith(color: AppColors.textSecondary),
-                ),
-                trailing: item.trailing ??
-                    const Icon(Icons.chevron_right,
-                        color: AppColors.textDisabled),
-                onTap: item.onTap,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: AppDimensions.space16,
-                  vertical: AppDimensions.space8,
-                ),
-              );
-            },
-          ),
-        ),
-      ],
+          const Divider(height: 1),
+
+          // Items
+          ...items.map((item) => _SettingsTile(item: item)),
+        ],
+      ),
     );
   }
 }
 
-class _SettingsItem {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Widget? trailing;
-  final VoidCallback onTap;
-  final Color? iconColor;
-  final Color? textColor;
+// ─────────────────────────────────────────────────────────────────────────────
+// _SettingsItem  — data class
+// ─────────────────────────────────────────────────────────────────────────────
 
-  _SettingsItem({
+class _SettingsItem {
+  const _SettingsItem({
     required this.title,
     required this.subtitle,
     required this.icon,
-    this.trailing,
     required this.onTap,
     this.iconColor,
-    this.textColor,
   });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final VoidCallback onTap;
+  final Color? iconColor;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _SettingsTile  — list tile widget
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SettingsTile extends StatelessWidget {
+  const _SettingsTile({required this.item});
+
+  final _SettingsItem item;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+        leading: Icon(
+          item.icon,
+          size: 20,
+          color: item.iconColor ?? AppColors.textSecondary,
+        ),
+        title: Text(item.title, style: AppTextStyles.bodyMedium),
+        subtitle: Text(item.subtitle, style: AppTextStyles.bodySmall),
+        trailing: Icon(
+          Icons.chevron_right_rounded,
+          size: 18,
+          color: AppColors.textSecondary,
+        ),
+        onTap: item.onTap,
+      );
 }

@@ -3,23 +3,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bootstrap5/flutter_bootstrap5.dart';
 import 'package:get/get.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-
-import 'l10n/app_localizations.dart';
 
 import 'core/constants/supabase_constants.dart';
 import 'core/constants/app_theme.dart';
 import 'core/router/app_router.dart';
-import 'core/bindings/initial_binding.dart';
-
-import 'controllers/locale_controller.dart';
+import 'core/initial_binding.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await dotenv.load(fileName: ".env");
+  // Load .env for debug builds.
+  // In release builds, values come from --dart-define (see supabase_constants.dart).
+  await dotenv.load(fileName: '.env');
 
   await Supabase.initialize(
     url: SupabaseConstants.url,
@@ -34,24 +31,12 @@ class MarcatApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final localeController = Get.put(LocaleController());
     return FlutterBootstrap5(
       builder: (context) => GetMaterialApp(
         title: 'Marcat',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         themeMode: ThemeMode.light,
-        locale: localeController.locale.value,
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: const [
-          Locale('en', ''), // English
-          Locale('ar', ''), // Arabic
-        ],
         initialBinding: InitialBinding(),
         initialRoute: AppRoutes.home,
         getPages: AppPages.pages,

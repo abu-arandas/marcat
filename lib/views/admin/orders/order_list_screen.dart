@@ -6,7 +6,6 @@ import '../../../controllers/cart_controller.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_text_styles.dart';
-import '../../../core/extensions/context_extensions.dart';
 import '../../../core/extensions/currency_extensions.dart';
 import 'package:marcat/models/sale_model.dart';
 import 'package:marcat/models/enums.dart';
@@ -42,7 +41,8 @@ class _AdminOrderListScreenState extends State<AdminOrderListScreen> {
     });
 
     try {
-      final (fetchedOrders, _) = await _cartCtrl.fetchOrders(page: 0, pageSize: 50);
+      final (fetchedOrders, _) =
+          await _cartCtrl.fetchOrders(page: 0, pageSize: 50);
       if (mounted) {
         setState(() {
           orders = fetchedOrders;
@@ -64,7 +64,7 @@ class _AdminOrderListScreenState extends State<AdminOrderListScreen> {
     return Scaffold(
       backgroundColor: AppColors.surfaceGrey,
       appBar: MarcatAppBar(
-        title: context.l10n.adminOrders,
+        title: 'Admin Orders',
         centerTitle: false,
         actions: [
           IconButton(

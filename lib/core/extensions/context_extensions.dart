@@ -1,16 +1,12 @@
 // lib/core/extensions/context_extensions.dart
 
 import 'package:flutter/material.dart';
-import '../../l10n/app_localizations.dart';
 
 extension BuildContextExtensions on BuildContext {
   // ── Theme shortcuts ───────────────────────────────────────────────────────
   ThemeData get theme => Theme.of(this);
   ColorScheme get colorScheme => Theme.of(this).colorScheme;
   TextTheme get textTheme => Theme.of(this).textTheme;
-
-  // ── Localizations ─────────────────────────────────────────────────────────
-  AppLocalizations get l10n => AppLocalizations.of(this)!;
 
   // ── Locale ────────────────────────────────────────────────────────────────
   Locale get locale => Localizations.localeOf(this);
