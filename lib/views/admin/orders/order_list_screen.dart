@@ -7,11 +7,10 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/extensions/currency_extensions.dart';
+import '../../../core/extensions/date_extensions.dart';
 import 'package:marcat/models/sale_model.dart';
 import 'package:marcat/models/enums.dart';
-import '../../../core/extensions/date_extensions.dart';
-import '../../shared/widgets/marcat_app_bar.dart';
-import '../../shared/widgets/marcat_badge.dart';
+import 'package:marcat/core/router/app_router.dart';
 
 class AdminOrderListScreen extends StatefulWidget {
   const AdminOrderListScreen({super.key});
@@ -63,13 +62,16 @@ class _AdminOrderListScreenState extends State<AdminOrderListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surfaceGrey,
-      appBar: MarcatAppBar(
-        title: 'Admin Orders',
+      appBar: AppBar(
+        title: const Text('Orders'),
         centerTitle: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.filter_list),
-            onPressed: () {},
+            tooltip: 'Filter Orders',
+            onPressed: () {
+              // TODO: open filter bottom sheet
+            },
           ),
         ],
       ),
@@ -89,11 +91,30 @@ class _AdminOrderListScreenState extends State<AdminOrderListScreen> {
     }
 
     if (errorMessage != null) {
-      return Center(child: Text(errorMessage!));
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppDimensions.pagePaddingH),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline,
+                  color: AppColors.statusRed, size: 48),
+              const SizedBox(height: AppDimensions.space16),
+              Text(errorMessage!, textAlign: TextAlign.center),
+              const SizedBox(height: AppDimensions.space24),
+              OutlinedButton.icon(
+                onPressed: _fetchOrders,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     if (orders == null || orders!.isEmpty) {
-      return const Center(child: Text("No orders found"));
+      return const Center(child: Text('No orders found.'));
     }
 
     return ListView.builder(
@@ -113,6 +134,7 @@ class _AdminOrderListScreenState extends State<AdminOrderListScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // ── Reference + status ────────────────────────────────────
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -120,10 +142,12 @@ class _AdminOrderListScreenState extends State<AdminOrderListScreen> {
                       o.referenceNumber,
                       style: AppTextStyles.titleMedium,
                     ),
-                    MarcatStatusBadge.forSaleStatus(o.status, context),
+                    // TODO: replace with Badge
                   ],
                 ),
                 const SizedBox(height: AppDimensions.space8),
+
+                // ── Date + total ──────────────────────────────────────────
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -138,27 +162,29 @@ class _AdminOrderListScreenState extends State<AdminOrderListScreen> {
                     ),
                   ],
                 ),
+
                 const Divider(height: AppDimensions.space24),
+
+                // ── Channel + view details ────────────────────────────────
                 Row(
                   children: [
                     Icon(
                       o.channel == SaleChannel.online
                           ? Icons.public
                           : Icons.point_of_sale,
-                      size: 16,
+                      size: AppDimensions.iconS,
                       color: AppColors.textDisabled,
                     ),
                     const SizedBox(width: AppDimensions.space8),
                     Text(
-                      o.channel.name.toUpperCase(),
+                      o.channel.dbValue.toUpperCase(),
                       style: AppTextStyles.labelSmall
                           .copyWith(color: AppColors.textSecondary),
                     ),
                     const Spacer(),
                     TextButton(
-                      onPressed: () {
-                        Get.toNamed('/app/admin/orders/${o.id}');
-                      },
+                      onPressed: () =>
+                          Get.toNamed(AppRoutes.adminOrderOf(o.id)),
                       child: const Text('View Details'),
                     ),
                   ],

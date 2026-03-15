@@ -18,6 +18,10 @@ class AppDimensions {
   static const double space80 = 80;
   static const double space96 = 96;
 
+  // ── Page layout padding ───────────────────────────────────────────────────
+  static const double pagePaddingH = 24.0; // horizontal page padding
+  static const double pagePaddingV = 32.0; // vertical page padding
+
   // ── Border radius ─────────────────────────────────────────────────────────
   static const double radiusXS = 2;
   static const double radiusS = 4; // cards, inputs — sharp/masculine
@@ -34,7 +38,7 @@ class AppDimensions {
   // ── App bar ───────────────────────────────────────────────────────────────
   static const double appBarHeight = 60;
 
-  // ── Bottom navigation ──────────────────────────────────────────────────────
+  // ── Bottom navigation ─────────────────────────────────────────────────────
   static const double bottomNavHeight = 64;
 
   // ── Product card ──────────────────────────────────────────────────────────
@@ -55,32 +59,9 @@ class AppDimensions {
   static const double avatarLarge = 80;
   static const double avatarXLarge = 120;
 
-  // ── Elevation ────────────────────────────────────────────────────────────
-  static const double elevationCard = 4;
+  // ── Elevation ─────────────────────────────────────────────────────────────
   static const double elevationNone = 0;
-
-  // ── Input field ───────────────────────────────────────────────────────────
-  static const double inputHeight = 52;
-  static const double inputBorderWidth = 1.5;
-
-  // ── Color swatches ────────────────────────────────────────────────────────
-  static const double colorSwatchSize = 20;
-  static const double colorSwatchSpacing = 6;
-
-  // ── Shimmer ───────────────────────────────────────────────────────────────
-  static const double shimmerHeight = 16;
-  static const double shimmerHeightLarge = 24;
-
-  // ── POS split ─────────────────────────────────────────────────────────────
-  static const double posLeftPanelFraction = 0.55;
-  static const double posRightPanelFraction = 0.45;
-
-  // ── Page padding ──────────────────────────────────────────────────────────
-  static const double pagePaddingH = 16;
-  static const double pagePaddingV = 16;
-
-  // ── Thumbnail ─────────────────────────────────────────────────────────────
-  static const double thumbnailSmall = 48;
-  static const double thumbnailMedium = 72;
-  static const double thumbnailLarge = 96;
+  static const double elevationLow = 2;
+  static const double elevationMedium = 4;
+  static const double elevationHigh = 8;
 }

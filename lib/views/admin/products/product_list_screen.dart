@@ -6,10 +6,7 @@ import '../../../controllers/product_controller.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_text_styles.dart';
-import 'package:marcat/models/product_model.dart';
-import 'package:marcat/models/enums.dart';
-import '../../shared/widgets/marcat_app_bar.dart';
-import '../../shared/widgets/marcat_badge.dart';
+import 'package:marcat/core/router/app_router.dart';
 
 class AdminProductListScreen extends StatefulWidget {
   const AdminProductListScreen({super.key});
@@ -19,7 +16,6 @@ class AdminProductListScreen extends StatefulWidget {
 }
 
 class _AdminProductListScreenState extends State<AdminProductListScreen> {
-  List<ProductModel>? products;
   bool isLoading = true;
   String? errorMessage;
 
@@ -37,16 +33,9 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
       isLoading = true;
       errorMessage = null;
     });
-
     try {
-      final (fetchedProducts, _) =
-          await _productCtrl.fetchProducts(page: 0, pageSize: 50);
-      if (mounted) {
-        setState(() {
-          products = fetchedProducts;
-          isLoading = false;
-        });
-      }
+      await _productCtrl.fetchProducts(page: 0, pageSize: 50);
+      if (mounted) setState(() => isLoading = false);
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -61,13 +50,14 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surfaceGrey,
-      appBar: MarcatAppBar(
-        title: 'Admin Products',
+      appBar: AppBar(
+        title: const Text('Products'),
         centerTitle: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: () => Get.toNamed('/app/admin/products/add'),
+            tooltip: 'Add Product',
+            onPressed: () => Get.toNamed(AppRoutes.adminProductsCreate),
           ),
         ],
       ),
@@ -87,68 +77,110 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
     }
 
     if (errorMessage != null) {
-      return Center(child: Text(errorMessage!));
-    }
-
-    if (products == null || products!.isEmpty) {
-      return const Center(child: Text("No products found"));
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(AppDimensions.pagePaddingH),
-      itemCount: products!.length,
-      itemBuilder: (context, index) {
-        final p = products![index];
-        return Card(
-          elevation: 0,
-          margin: const EdgeInsets.only(bottom: AppDimensions.space12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppDimensions.radiusS),
-            side: const BorderSide(color: AppColors.borderLight),
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppDimensions.pagePaddingH),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline,
+                  color: AppColors.statusRed, size: 48),
+              const SizedBox(height: AppDimensions.space16),
+              Text(errorMessage!, textAlign: TextAlign.center),
+              const SizedBox(height: AppDimensions.space24),
+              OutlinedButton.icon(
+                onPressed: _fetchProducts,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+              ),
+            ],
           ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.all(AppDimensions.space12),
-            leading: p.primaryImageUrl != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(AppDimensions.radiusXS),
-                    child: Image.network(p.primaryImageUrl!,
-                        width: 50, height: 70, fit: BoxFit.cover),
-                  )
-                : Container(
-                    width: 50,
-                    height: 70,
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceGrey,
+        ),
+      );
+    }
+
+    return Obx(() {
+      final products = _productCtrl.products;
+
+      if (products.isEmpty) {
+        return const Center(child: Text('No products found.'));
+      }
+
+      return ListView.builder(
+        padding: const EdgeInsets.all(AppDimensions.pagePaddingH),
+        itemCount: products.length,
+        itemBuilder: (context, index) {
+          final p = products[index];
+          return Card(
+            elevation: 0,
+            margin: const EdgeInsets.only(bottom: AppDimensions.space12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppDimensions.radiusS),
+              side: const BorderSide(color: AppColors.borderLight),
+            ),
+            child: ListTile(
+              contentPadding: const EdgeInsets.all(AppDimensions.space12),
+              leading: p.primaryImageUrl != null
+                  ? ClipRRect(
                       borderRadius:
                           BorderRadius.circular(AppDimensions.radiusXS),
+                      child: Image.network(
+                        p.primaryImageUrl!,
+                        width: 50,
+                        height: 70,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 50,
+                          height: 70,
+                          color: AppColors.surfaceGrey,
+                          child: const Icon(Icons.image_not_supported,
+                              size: 20, color: AppColors.textDisabled),
+                        ),
+                      ),
+                    )
+                  : Container(
+                      width: 50,
+                      height: 70,
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceGrey,
+                        borderRadius:
+                            BorderRadius.circular(AppDimensions.radiusXS),
+                      ),
+                      child: const Icon(Icons.checkroom,
+                          size: 20, color: AppColors.textDisabled),
                     ),
-                    child: const Icon(Icons.image_not_supported),
+              title: Text(p.name, style: AppTextStyles.titleMedium),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    p.sku,
+                    style: AppTextStyles.labelSmall
+                        .copyWith(color: AppColors.textSecondary),
                   ),
-            title: Text(p.name, style: AppTextStyles.titleMedium),
-            subtitle: Text(
-              p.sku,
-              style: AppTextStyles.labelSmall
-                  .copyWith(color: AppColors.textSecondary),
+                  Text(
+                    'JOD ${p.basePrice.toStringAsFixed(2)}',
+                    style: AppTextStyles.labelSmall.copyWith(
+                        color: AppColors.marcatGold, fontFamily: 'IBMPlexMono'),
+                  ),
+                ],
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // TODO: Add status badge
+                  const SizedBox(width: AppDimensions.space8),
+                  const Icon(Icons.chevron_right,
+                      color: AppColors.textDisabled),
+                ],
+              ),
+              onTap: () {
+                Get.toNamed(AppRoutes.adminProductEditOf(p.id));
+              },
             ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                MarcatStatusBadge.custom(
-                  label: p.status.name.toUpperCase(),
-                  color: p.status == ProductStatus.active
-                      ? AppColors.statusGreen
-                      : AppColors.statusAmber,
-                ),
-                const SizedBox(width: AppDimensions.space8),
-                const Icon(Icons.chevron_right, color: AppColors.textDisabled),
-              ],
-            ),
-            onTap: () {
-              Get.toNamed('/app/admin/products/edit/${p.id}');
-            },
-          ),
-        );
-      },
-    );
+          );
+        },
+      );
+    });
   }
 }

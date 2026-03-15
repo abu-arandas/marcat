@@ -1,20 +1,20 @@
 // lib/views/customer/checkout_page.dart
 
-// ignore_for_file: avoid_print
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:marcat/models/cart_item_model.dart';
 import 'package:marcat/models/customer_address_model.dart';
-// FIX: all repository/provider imports → merged controllers
+import 'package:marcat/models/enums.dart';
 import 'package:marcat/controllers/cart_controller.dart';
 import 'package:marcat/controllers/account_controller.dart';
 import 'package:marcat/controllers/auth_controller.dart';
+import 'package:marcat/controllers/admin_controller.dart';
+import 'package:marcat/core/router/app_router.dart';
+import 'package:marcat/core/extensions/currency_extensions.dart';
 
 import 'scaffold/app_scaffold.dart';
 import 'shared/brand.dart';
 import 'shared/marcat_buttons.dart';
-import 'package:marcat/core/router/app_router.dart';
 
 class CheckoutPage extends StatefulWidget {
   const CheckoutPage({super.key});
@@ -28,9 +28,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
   int? selectedAddressId;
   bool isLoadingAddresses = true;
   bool isPlacingOrder = false;
-  int step = 0; // 0=address 1=review 2=success
+  int step = 0; // 0 = address, 1 = review, 2 = success
 
-  // New address form
+  // New address form state
   bool showAddressForm = false;
   String label = 'Home';
   late final TextEditingController addressLine1Ctrl;
@@ -70,15 +70,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
       await _accountCtrl.fetchAddresses(user.id);
       if (mounted) {
         setState(() {
-          addresses.clear();
-          addresses.addAll(_accountCtrl.addresses);
+          addresses
+            ..clear()
+            ..addAll(_accountCtrl.addresses);
           final def = addresses.where((a) => a.isDefault).firstOrNull;
           selectedAddressId = def?.id ?? addresses.firstOrNull?.id;
           isLoadingAddresses = false;
         });
       }
     } catch (e) {
-      Get.snackbar('Error', e.toString());
+      Get.snackbar('Error', 'Could not load addresses: ${e.toString()}');
       if (mounted) setState(() => isLoadingAddresses = false);
     }
   }
@@ -101,8 +102,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
       });
       if (mounted) {
         setState(() {
-          addresses.clear();
-          addresses.addAll(_accountCtrl.addresses);
+          addresses
+            ..clear()
+            ..addAll(_accountCtrl.addresses);
           if (addresses.isNotEmpty) {
             selectedAddressId = addresses.last.id;
           }
@@ -125,35 +127,70 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   Future<void> placeOrder() async {
     final user = _auth.user;
-    if (user == null || selectedAddressId == null) return;
+    if (user == null) {
+      Get.snackbar(
+        'Authentication Required',
+        'Please sign in to place an order.',
+        snackPosition: SnackPosition.TOP,
+      );
+      Get.toNamed(AppRoutes.login);
+      return;
+    }
+    if (selectedAddressId == null) {
+      Get.snackbar(
+        'Address Required',
+        'Please select or add a delivery address.',
+        snackPosition: SnackPosition.TOP,
+      );
+      return;
+    }
+
     if (mounted) setState(() => isPlacingOrder = true);
+
     try {
-      const storeId = 1;
+      final adminCtrl = Get.find<AdminController>();
+      if (adminCtrl.stores.isEmpty) {
+        await adminCtrl.fetchStores(activeOnly: true);
+      }
+      final onlineStoreId =
+          adminCtrl.stores.isNotEmpty ? adminCtrl.stores.first.id : 1;
+
       final saleId = await _cart.createOrder(
-        storeId: storeId,
+        storeId: onlineStoreId,
         shippingAddressId: selectedAddressId!,
         cartItems: _cart.items,
-        channel: 'Online',
+        channel: SaleChannel.online.dbValue,
         customerId: user.id,
         discountTotalAmt: _cart.discountTotal,
-        shippingCostAmt: 0.0, // TODO
+        shippingCostAmt: 0.0, // TODO: implement shipping cost calculator
         subtotalAmt: _cart.subtotal,
-        taxTotalAmt: 0.0, // TODO
+        taxTotalAmt: 0.0, // TODO: implement tax calculation
         offerId: _cart.appliedOffer.value?.offerId,
       );
+
       if (mounted) {
-        setState(() {
-          step = 2;
-        });
+        setState(() => step = 2);
       }
       Get.snackbar(
-          'Order Placed!', 'Your order #$saleId has been placed successfully.',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Colors.green,
-          colorText: Colors.white);
+        'Order Placed!',
+        'Your order #$saleId has been placed successfully.',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 4),
+      );
     } catch (e) {
-      Get.snackbar('Error', e.toString());
+      // FIX: was no catch block — isPlacingOrder stayed true permanently on
+      // failure, locking the user out of retrying.
+      Get.snackbar(
+        'Order Failed',
+        'Could not place your order: ${e.toString()}',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.red.shade100,
+        colorText: Colors.red.shade900,
+      );
     } finally {
+      // FIX: always reset loading state regardless of success or failure.
       if (mounted) setState(() => isPlacingOrder = false);
     }
   }
@@ -187,6 +224,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _CheckoutBody
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _CheckoutBody extends StatelessWidget {
   final int step;
@@ -231,7 +272,7 @@ class _CheckoutBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (step == 2) return _SuccessState();
+    if (step == 2) return const _SuccessState();
 
     final isDesktop = MediaQuery.sizeOf(context).width > 900;
     final cart = Get.find<CartController>();
@@ -246,7 +287,7 @@ class _CheckoutBody extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    flex: 6,
+                    flex: 3,
                     child: _CheckoutSteps(
                       step: step,
                       addresses: addresses,
@@ -269,11 +310,14 @@ class _CheckoutBody extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 40),
-                  SizedBox(
-                      width: 340, child: _CheckoutOrderSummary(cart: cart)),
+                  Expanded(
+                    flex: 2,
+                    child: _OrderSummaryCard(cart: cart),
+                  ),
                 ],
               )
             : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _CheckoutSteps(
                     step: step,
@@ -296,7 +340,7 @@ class _CheckoutBody extends StatelessWidget {
                     onLabelChanged: onLabelChanged,
                   ),
                   const SizedBox(height: 32),
-                  _CheckoutOrderSummary(cart: cart),
+                  _OrderSummaryCard(cart: cart),
                 ],
               ),
       ),
@@ -304,7 +348,105 @@ class _CheckoutBody extends StatelessWidget {
   }
 }
 
-// ── Step indicator ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// _OrderSummaryCard
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _OrderSummaryCard extends StatelessWidget {
+  const _OrderSummaryCard({required this.cart});
+  final CartController cart;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: kBorderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Order Summary',
+            style: TextStyle(
+              fontFamily: 'PlayfairDisplay',
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: kNavy,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Obx(() => ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: cart.items.length,
+                separatorBuilder: (_, __) => const Divider(height: 12),
+                itemBuilder: (ctx, idx) {
+                  final item = cart.items[idx];
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${item.productName} (${item.sizeLabel} · ${item.colorName})',
+                          style: const TextStyle(fontSize: 13, color: kNavy),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        item.lineTotal.toJOD(),
+                        style: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  );
+                },
+              )),
+          const Divider(height: 24),
+          Obx(() => _summaryRow('Subtotal', cart.subtotal.toJOD())),
+          if (cart.appliedOffer.value != null)
+            Obx(() => _summaryRow(
+                  'Discount',
+                  '- ${cart.discountTotal.toJOD()}',
+                  color: Colors.green,
+                )),
+          const Divider(height: 16),
+          Obx(() => _summaryRow(
+                'Total',
+                cart.grandTotal.toJOD(),
+                isBold: true,
+              )),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryRow(String label, String value,
+      {Color? color, bool isBold = false}) {
+    final style = TextStyle(
+      fontSize: 14,
+      fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
+      color: color ?? kNavy,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: style),
+          Text(value, style: style),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _CheckoutSteps  (step indicator + step content)
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _CheckoutSteps extends StatelessWidget {
   final int step;
@@ -383,6 +525,8 @@ class _CheckoutSteps extends StatelessWidget {
       );
 }
 
+// ── Step indicator ────────────────────────────────────────────────────────────
+
 class _StepIndicator extends StatelessWidget {
   final int current;
   const _StepIndicator({required this.current});
@@ -399,7 +543,8 @@ class _StepIndicator extends StatelessWidget {
 }
 
 class _Step extends StatelessWidget {
-  final int index, current;
+  final int index;
+  final int current;
   final String label;
   const _Step(
       {required this.index, required this.label, required this.current});
@@ -408,7 +553,6 @@ class _Step extends StatelessWidget {
   Widget build(BuildContext context) {
     final done = index < current;
     final active = index == current;
-
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -423,19 +567,25 @@ class _Step extends StatelessWidget {
           child: Center(
             child: done
                 ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
-                : Text('${index + 1}',
+                : Text(
+                    '${index + 1}',
                     style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: active ? Colors.white : kSlate)),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: active ? Colors.white : kSlate,
+                    ),
+                  ),
           ),
         ),
         const SizedBox(width: 8),
-        Text(label,
-            style: TextStyle(
-                fontSize: 13,
-                fontWeight: active || done ? FontWeight.w700 : FontWeight.w500,
-                color: active || done ? kNavy : kSlate)),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: active || done ? FontWeight.w700 : FontWeight.w500,
+            color: active || done ? kNavy : kSlate,
+          ),
+        ),
       ],
     );
   }
@@ -497,31 +647,33 @@ class _AddressStep extends StatelessWidget {
       return const Center(
           child: CircularProgressIndicator(color: kNavy, strokeWidth: 2));
     }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Delivery Address',
-            style: TextStyle(
-                fontFamily: 'Playfair Display',
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: kNavy)),
-        const SizedBox(height: 20),
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: addresses.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            final addr = addresses[index];
-            return _AddressCard(
-              address: addr,
-              selected: selectedAddressId == addr.id,
-              onSelect: () => onSelectAddress(addr.id),
-            );
-          },
+        const Text(
+          'Delivery Address',
+          style: TextStyle(
+              fontFamily: 'PlayfairDisplay',
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: kNavy),
         ),
+        const SizedBox(height: 20),
+        if (addresses.isNotEmpty)
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: addresses.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final addr = addresses[index];
+              return _AddressCard(
+                address: addr,
+                selected: selectedAddressId == addr.id,
+                onSelect: () => onSelectAddress(addr.id),
+              );
+            },
+          ),
         if (showAddressForm) ...[
           const SizedBox(height: 16),
           _AddAddressForm(
@@ -575,7 +727,6 @@ class _AddressCard extends StatelessWidget {
         onTap: onSelect,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
@@ -597,8 +748,7 @@ class _AddressCard extends StatelessWidget {
                       Border.all(color: selected ? kNavy : kSlate, width: 2),
                 ),
                 child: selected
-                    ? const Icon(Icons.check_rounded,
-                        size: 12, color: Colors.white)
+                    ? const Icon(Icons.check, size: 12, color: Colors.white)
                     : null,
               ),
               const SizedBox(width: 16),
@@ -606,41 +756,35 @@ class _AddressCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Text(address.label,
-                            style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: kNavy)),
-                        if (address.isDefault) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: kGold.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text('DEFAULT',
-                                style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w800,
-                                    color: kGold,
-                                    letterSpacing: 1)),
-                          ),
-                        ],
-                      ],
-                    ),
+                    Text(address.label,
+                        style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: kNavy)),
                     const SizedBox(height: 4),
                     Text(
-                      [address.fullAddress, address.city].join(', '),
-                      style: const TextStyle(
-                          fontSize: 13, color: kSlate, height: 1.5),
+                      '${address.fullAddress}, ${address.city}',
+                      style: const TextStyle(fontSize: 13, color: kSlate),
                     ),
                   ],
                 ),
               ),
+              if (address.isDefault)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: kGold.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'Default',
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: kGold),
+                  ),
+                ),
             ],
           ),
         ),
@@ -672,9 +816,9 @@ class _AddAddressForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: kCream,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: kBorderColor),
         ),
@@ -683,87 +827,59 @@ class _AddAddressForm extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  const Text('New Address',
-                      style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: kNavy)),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: () => onShowAddressForm(false),
-                    icon: const Icon(Icons.close_rounded,
-                        size: 18, color: kSlate),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: ['Home', 'Work', 'Other'].map((l) {
-                  final sel = label == l;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: GestureDetector(
-                      onTap: () => onLabelChanged(l),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 7),
-                        decoration: BoxDecoration(
-                          color: sel ? kNavy : Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: sel ? kNavy : kBorderColor),
-                        ),
-                        child: Text(l,
-                            style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: sel ? Colors.white : kNavy)),
-                      ),
-                    ),
-                  );
-                }).toList(),
+              const Text(
+                'New Address',
+                style: TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.w700, color: kNavy),
               ),
               const SizedBox(height: 16),
               _CheckoutField(
                 controller: addressLine1Ctrl,
-                label: 'Street Address *',
-                hint: 'e.g. 123 Main Street',
+                label: 'Address Line 1',
+                hint: 'Street, building, apartment',
                 validator: (v) =>
                     v == null || v.trim().isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 12),
               _CheckoutField(
                 controller: addressLine2Ctrl,
-                label: 'Apartment / Suite (optional)',
-                hint: 'e.g. Apt 4B',
+                label: 'Address Line 2 (Optional)',
+                hint: 'Floor, landmark',
               ),
               const SizedBox(height: 12),
+              _CheckoutField(
+                controller: cityCtrl,
+                label: 'City',
+                hint: 'Amman, Zarqa…',
+                validator: (v) =>
+                    v == null || v.trim().isEmpty ? 'Required' : null,
+              ),
+              const SizedBox(height: 20),
               Row(
                 children: [
                   Expanded(
-                    child: _CheckoutField(
-                      controller: cityCtrl,
-                      label: 'City *',
-                      hint: 'Amman',
-                      validator: (v) =>
-                          v == null || v.trim().isEmpty ? 'Required' : null,
+                    child: OutlinedButton(
+                      onPressed: () => onShowAddressForm(false),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: kSlate,
+                        side: const BorderSide(color: kBorderColor),
+                      ),
+                      child: const Text('Cancel'),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _CheckoutField(
-                      controller: postalCodeCtrl,
-                      label: 'Postal Code',
-                      hint: '11110',
-                      keyboardType: TextInputType.number,
+                    child: ElevatedButton(
+                      onPressed: onAddAddress,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kNavy,
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('Save Address'),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              PrimaryButton(label: 'Save Address', onPressed: onAddAddress),
             ],
           ),
         ),
@@ -772,15 +888,14 @@ class _AddAddressForm extends StatelessWidget {
 
 class _CheckoutField extends StatelessWidget {
   final TextEditingController controller;
-  final String label, hint;
-  final TextInputType? keyboardType;
+  final String label;
+  final String hint;
   final String? Function(String?)? validator;
 
   const _CheckoutField({
     required this.controller,
     required this.label,
     required this.hint,
-    this.keyboardType,
     this.validator,
   });
 
@@ -794,7 +909,6 @@ class _CheckoutField extends StatelessWidget {
           const SizedBox(height: 6),
           TextFormField(
             controller: controller,
-            keyboardType: keyboardType,
             validator: validator,
             style: const TextStyle(fontSize: 13, color: kNavy),
             decoration: InputDecoration(
@@ -847,13 +961,17 @@ class _ReviewStep extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Review Your Order',
-            style: TextStyle(
-                fontFamily: 'Playfair Display',
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: kNavy)),
+        const Text(
+          'Review Your Order',
+          style: TextStyle(
+              fontFamily: 'PlayfairDisplay',
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: kNavy),
+        ),
         const SizedBox(height: 20),
+
+        // Delivery address
         if (addr != null)
           Container(
             padding: const EdgeInsets.all(20),
@@ -875,8 +993,10 @@ class _ReviewStep extends StatelessWidget {
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
                               color: kNavy)),
-                      Text([addr.fullAddress, addr.city].join(', '),
-                          style: const TextStyle(fontSize: 12, color: kSlate)),
+                      Text(
+                        '${addr.fullAddress}, ${addr.city}',
+                        style: const TextStyle(fontSize: 12, color: kSlate),
+                      ),
                     ],
                   ),
                 ),
@@ -891,7 +1011,10 @@ class _ReviewStep extends StatelessWidget {
               ],
             ),
           ),
+
         const SizedBox(height: 16),
+
+        // Cart items
         Obx(() => ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -900,26 +1023,14 @@ class _ReviewStep extends StatelessWidget {
               itemBuilder: (context, index) =>
                   _ReviewItemRow(item: cart.items[index]),
             )),
+
         const SizedBox(height: 32),
+
+        // Place order button
         PrimaryButton(
           label: 'Place Order',
-          onPressed: onPlaceOrder,
           loading: isPlacingOrder,
-          icon: Icons.check_circle_outline_rounded,
-        ),
-        const SizedBox(height: 12),
-        TextButton(
-          onPressed: () => onStepChanged(0),
-          style: TextButton.styleFrom(foregroundColor: kSlate),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.arrow_back_rounded, size: 14),
-              SizedBox(width: 6),
-              Text('Back to Address',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
-            ],
-          ),
+          onPressed: isPlacingOrder ? null : onPlaceOrder,
         ),
       ],
     );
@@ -931,209 +1042,77 @@ class _ReviewItemRow extends StatelessWidget {
   const _ReviewItemRow({required this.item});
 
   @override
-  Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: kBorderColor),
-        ),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: SizedBox(
-                width: 56,
-                height: 68,
-                child: item.primaryImageUrl != null
-                    ? Image.network(item.primaryImageUrl!, fit: BoxFit.cover)
-                    : Container(color: kCream),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(item.productName,
-                      style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: kNavy)),
-                  Text('Size: ${item.sizeLabel}',
-                      style: const TextStyle(fontSize: 12, color: kSlate)),
-                  Text('Qty: ${item.quantity}',
-                      style: const TextStyle(fontSize: 12, color: kSlate)),
-                ],
-              ),
-            ),
-            Text(
-              'JOD ${(item.unitPrice * item.quantity).toStringAsFixed(2)}',
-              style: const TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.w700, color: kNavy),
-            ),
-          ],
-        ),
-      );
-}
-
-// ── Checkout order summary sidebar ───────────────────────────────────────────
-
-class _CheckoutOrderSummary extends StatelessWidget {
-  final CartController cart;
-  const _CheckoutOrderSummary({required this.cart});
-
-  @override
-  Widget build(BuildContext context) => Obx(() {
-        final shipping = cart.subtotal >= 50 ? 0.0 : 3.0;
-        final total = cart.grandTotal + shipping;
-
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: kCream,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: kBorderColor),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Summary',
-                  style: TextStyle(
-                      fontFamily: 'Playfair Display',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: kNavy)),
-              const SizedBox(height: 20),
-              _Row('Subtotal', 'JOD ${cart.subtotal.toStringAsFixed(2)}'),
-              const SizedBox(height: 8),
-              if (cart.discountTotal > 0) ...[
-                _Row('Discount',
-                    '- JOD ${cart.discountTotal.toStringAsFixed(2)}',
-                    green: true),
-                const SizedBox(height: 8),
-              ],
-              _Row(
-                  'Shipping',
-                  shipping == 0
-                      ? 'Free'
-                      : 'JOD ${shipping.toStringAsFixed(2)}'),
-              if (cart.subtotal < 50)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    'Add JOD ${(50 - cart.subtotal).toStringAsFixed(2)} more for free shipping',
-                    style: const TextStyle(
-                        fontSize: 11,
-                        color: kSlate,
-                        fontStyle: FontStyle.italic),
-                  ),
-                ),
-              const SizedBox(height: 16),
-              const Divider(color: kBorderColor),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  const Text('Total',
-                      style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: kNavy)),
-                  const Spacer(),
-                  Text('JOD ${total.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                          fontFamily: 'Playfair Display',
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: kNavy)),
-                ],
-              ),
-              const SizedBox(height: 20),
-              const Row(
-                children: [
-                  Icon(Icons.lock_outline_rounded, size: 13, color: kSlate),
-                  SizedBox(width: 6),
-                  Text('Secure checkout',
-                      style: TextStyle(fontSize: 12, color: kSlate)),
-                ],
-              ),
-            ],
-          ),
-        );
-      });
-}
-
-class _Row extends StatelessWidget {
-  final String label, value;
-  final bool green;
-  const _Row(this.label, this.value, {this.green = false});
-
-  @override
   Widget build(BuildContext context) => Row(
         children: [
-          Text(label, style: const TextStyle(fontSize: 13, color: kSlate)),
-          const Spacer(),
-          Text(value,
-              style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: green ? Colors.green : kNavy)),
+          Expanded(
+            child: Text(
+              '${item.productName} — ${item.sizeLabel} · ${item.colorName}',
+              style: const TextStyle(fontSize: 13, color: kNavy),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Text(
+            '× ${item.quantity}',
+            style: const TextStyle(fontSize: 13, color: kSlate),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            item.lineTotal.toJOD(),
+            style: const TextStyle(
+                fontSize: 13, fontWeight: FontWeight.w700, color: kNavy),
+          ),
         ],
       );
 }
 
-// ── Success state ─────────────────────────────────────────────────────────────
+// ── Step 2: Success ───────────────────────────────────────────────────────────
 
 class _SuccessState extends StatelessWidget {
+  const _SuccessState();
+
   @override
   Widget build(BuildContext context) => Center(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 80),
+          padding: const EdgeInsets.all(40),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 90,
-                height: 90,
-                decoration:
-                    const BoxDecoration(color: kNavy, shape: BoxShape.circle),
-                child: const Icon(Icons.check_rounded,
-                    size: 44, color: Colors.white),
+                width: 80,
+                height: 80,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFDCFCE7),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check_circle_rounded,
+                    size: 48, color: Color(0xFF16A34A)),
               ),
-              const SizedBox(height: 28),
-              const Text('Order Confirmed!',
-                  style: TextStyle(
-                      fontFamily: 'Playfair Display',
-                      fontSize: 30,
-                      fontWeight: FontWeight.w700,
-                      color: kNavy)),
+              const SizedBox(height: 24),
+              const Text(
+                'Order Placed!',
+                style: TextStyle(
+                  fontFamily: 'PlayfairDisplay',
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  color: kNavy,
+                ),
+              ),
               const SizedBox(height: 12),
               const Text(
-                'Thank you for shopping with MARCAT.\nYou\'ll receive a confirmation email shortly.',
+                'Your order has been received and is being processed.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 15, color: kSlate, height: 1.7),
+                style: TextStyle(fontSize: 14, color: kSlate),
               ),
-              const SizedBox(height: 36),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 180,
-                    child: PrimaryButton(
-                      label: 'My Orders',
-                      onPressed: () => Get.offAllNamed(AppRoutes.orders),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  SizedBox(
-                    width: 180,
-                    child: OutlineButton(
-                      label: 'Keep Shopping',
-                      onPressed: () => Get.offAllNamed(AppRoutes.shop),
-                    ),
-                  ),
-                ],
+              const SizedBox(height: 32),
+              PrimaryButton(
+                label: 'View My Orders',
+                onPressed: () => Get.toNamed(AppRoutes.orders),
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => Get.toNamed(AppRoutes.home),
+                child: const Text('Continue Shopping'),
               ),
             ],
           ),

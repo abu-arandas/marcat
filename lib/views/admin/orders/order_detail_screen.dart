@@ -10,7 +10,6 @@ import '../../../core/constants/app_text_styles.dart';
 import 'package:marcat/models/sale_model.dart';
 import 'package:marcat/models/sale_item_model.dart';
 import 'package:marcat/models/enums.dart';
-import '../../shared/widgets/marcat_app_bar.dart';
 
 class AdminOrderDetailScreen extends StatefulWidget {
   const AdminOrderDetailScreen({super.key, required this.orderId});
@@ -67,7 +66,7 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
 
     try {
       await _cartCtrl.updateOrderStatus(widget.orderId, newStatusStr,
-          changedBy: 'Admin'); 
+          changedBy: 'Admin');
       Get.snackbar('Success', 'Order status updated');
       _fetchOrderDetails(); // Reload to get fresh state
     } catch (e) {
@@ -79,8 +78,8 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surfaceGrey,
-      appBar: const MarcatAppBar(
-        title: 'Order Details',
+      appBar: AppBar(
+        title: const Text('Order Details'),
         backgroundColor: AppColors.marcatCream,
       ),
       body: _buildBody(),
@@ -136,8 +135,7 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('Total', style: AppTextStyles.bodyMedium),
-                    Text(o.grandTotal.toJOD(),
-                        style: AppTextStyles.titleLarge),
+                    Text(o.grandTotal.toJOD(), style: AppTextStyles.titleLarge),
                   ],
                 ),
               ],
@@ -152,8 +150,8 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
                 const SizedBox(height: AppDimensions.space16),
                 ...items!.map((i) {
                   return Padding(
-                    padding: const EdgeInsets.only(
-                        bottom: AppDimensions.space12),
+                    padding:
+                        const EdgeInsets.only(bottom: AppDimensions.space12),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -162,8 +160,8 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
                           height: 40,
                           decoration: BoxDecoration(
                             color: AppColors.surfaceGrey,
-                            borderRadius: BorderRadius.circular(
-                                AppDimensions.radiusXS),
+                            borderRadius:
+                                BorderRadius.circular(AppDimensions.radiusXS),
                           ),
                           child: const Icon(Icons.checkroom),
                         ),

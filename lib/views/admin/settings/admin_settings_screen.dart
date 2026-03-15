@@ -1,11 +1,4 @@
 // lib/views/admin/settings/admin_settings_screen.dart
-//
-// FIX 1: Removed direct Supabase.instance.client.auth.currentUser access.
-//         Was bypassing AuthController, not reactive to sign-out, and
-//         returned the raw supabase_flutter User type instead of UserModel.
-//         Now uses Get.find<AuthController>().state which is reactive.
-//
-// FIX 2: Removed unused `import 'package:supabase_flutter/supabase_flutter.dart'`.
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -16,7 +9,6 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../models/user_model.dart';
-import '../../shared/widgets/marcat_app_bar.dart';
 import 'package:marcat/core/router/app_router.dart';
 
 class AdminSettingsScreen extends StatelessWidget {
@@ -24,15 +16,12 @@ class AdminSettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // FIX: was Supabase.instance.client.auth.currentUser — bypassed AuthController.
-    // Now reads from the reactive AuthController state, consistent with the
-    // rest of the app and properly reactive to sign-out events.
     final authCtrl = Get.find<AuthController>();
 
     return Scaffold(
       backgroundColor: AppColors.surfaceGrey,
-      appBar: MarcatAppBar(
-        title: 'Admin Settings',
+      appBar: AppBar(
+        title: const Text('Admin Settings'),
         centerTitle: false,
       ),
       body: SingleChildScrollView(

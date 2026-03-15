@@ -6,7 +6,6 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_text_styles.dart';
 import 'package:marcat/controllers/auth_controller.dart';
-import '../../shared/widgets/marcat_app_bar.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -17,8 +16,8 @@ class AdminDashboardScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.surfaceGrey,
-      appBar: MarcatAppBar(
-        title: 'Admin Dashboard',
+      appBar: AppBar(
+        title: const Text('Admin Dashboard'),
         centerTitle: false,
         actions: [
           IconButton(

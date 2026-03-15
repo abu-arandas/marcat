@@ -1,11 +1,4 @@
 // lib/models/enums.dart
-//
-// Mirrors every PostgreSQL ENUM defined in database.sql.
-// Each extension provides:
-//   • dbValue  → the string stored in Postgres
-//   • fromDb() → safe parser that falls back to a sensible default
-
-// ignore_for_file: constant_identifier_names
 
 // ─── public.user_role ────────────────────────────────────────────────────────
 enum UserRole {
@@ -17,7 +10,7 @@ enum UserRole {
 }
 
 extension UserRoleX on UserRole {
-  String get dbValue => name; // 'admin' | 'store_manager' | ...
+  String get dbValue => name; // 'admin' | 'store_manager' | …
 
   static UserRole fromDb(String? v) => UserRole.values.firstWhere(
         (e) => e.name == v,
@@ -26,25 +19,30 @@ extension UserRoleX on UserRole {
 }
 
 // ─── public.loyalty_tier ─────────────────────────────────────────────────────
-// NOTE: LoyaltyTier values use PascalCase intentionally — they match
-// the Postgres ENUM values ('Bronze', 'Silver', etc.) stored in the DB.
+// DB stores PascalCase values: 'Bronze', 'Silver', 'Gold', 'Platinum'.
+// Dart enum values are lowerCamelCase per lint rules.
+// The dbValue getter handles the capitalisation for the wire format.
 enum LoyaltyTier {
-  Bronze,
-  Silver,
-  Gold,
-  Platinum,
+  bronze,
+  silver,
+  gold,
+  platinum,
 }
 
 extension LoyaltyTierX on LoyaltyTier {
-  /// Database value stored in Postgres (PascalCase by DB design).
-  String get dbValue => name; // 'Bronze' | 'Silver' | 'Gold' | 'Platinum'
+  /// Database value — capitalises first letter to match the Postgres ENUM.
+  /// 'bronze' → 'Bronze', 'silver' → 'Silver', etc.
+  String get dbValue {
+    final s = name;
+    return s[0].toUpperCase() + s.substring(1);
+  }
 
-  /// Human-readable label for UI display.
-  String get displayLabel => name;
+  /// Human-readable label for UI display (same as DB value).
+  String get displayLabel => dbValue;
 
   static LoyaltyTier fromDb(String? v) => LoyaltyTier.values.firstWhere(
-        (e) => e.name == v,
-        orElse: () => LoyaltyTier.Bronze,
+        (e) => e.dbValue == v,
+        orElse: () => LoyaltyTier.bronze,
       );
 }
 
@@ -73,7 +71,7 @@ enum SaleStatus {
 }
 
 extension SaleStatusX on SaleStatus {
-  String get dbValue => name; // 'pending' | 'paid' | 'shipped' | ...
+  String get dbValue => name; // 'pending' | 'paid' | 'shipped' | …
 
   static SaleStatus fromDb(String? v) => SaleStatus.values.firstWhere(
         (e) => e.name == v,
@@ -90,7 +88,7 @@ enum DeliveryStatus {
 }
 
 extension DeliveryStatusX on DeliveryStatus {
-  String get dbValue => name; // 'pending' | 'out_for_delivery' | ...
+  String get dbValue => name; // 'pending' | 'out_for_delivery' | …
 
   static DeliveryStatus fromDb(String? v) => DeliveryStatus.values.firstWhere(
         (e) => e.name == v,
@@ -108,7 +106,7 @@ enum ReturnStatus {
 }
 
 extension ReturnStatusX on ReturnStatus {
-  String get dbValue => name; // 'requested' | 'approved' | ...
+  String get dbValue => name; // 'requested' | 'approved' | …
 
   static ReturnStatus fromDb(String? v) => ReturnStatus.values.firstWhere(
         (e) => e.name == v,
