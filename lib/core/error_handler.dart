@@ -42,9 +42,6 @@ class ErrorHandler {
     }
 
     if (showSnackbar) {
-      // FIX: was Get.context! — force-unwrap crashes during app startup,
-      // background isolates, or after a widget is disposed.
-      // Now null-safe: falls back to GetX's own overlay-independent snackbar.
       final ctx = Get.context;
       if (ctx != null) {
         SnackbarUtils.showError(ctx, appException.message);

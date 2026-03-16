@@ -13,7 +13,13 @@ class AdminStaffListScreen extends StatelessWidget {
   const AdminStaffListScreen({super.key});
 
   static String _getInitials(StaffModel staff) {
-    return 'S';
+    final first =
+        staff.firstName.isNotEmpty ? staff.firstName[0].toUpperCase() : '';
+    final last = (staff.lastName?.isNotEmpty ?? false)
+        ? staff.lastName![0].toUpperCase()
+        : '';
+    final initials = '$first$last';
+    return initials.isNotEmpty ? initials : 'ST';
   }
 
   @override
@@ -50,70 +56,67 @@ class AdminStaffListScreen extends StatelessWidget {
                 child: Text(
                   'No staff members found.\nTap + to add one.',
                   textAlign: TextAlign.center,
+                  style: AppTextStyles.bodyMedium,
                 ),
               ),
             );
           }
 
-          return ListView.builder(
+          return ListView.separated(
             padding: const EdgeInsets.all(AppDimensions.pagePaddingH),
             itemCount: controller.staffList.length,
-            itemBuilder: (context, index) {
+            separatorBuilder: (_, __) =>
+                const SizedBox(height: AppDimensions.space8),
+            itemBuilder: (_, index) {
               final staff = controller.staffList[index];
-
-              return Card(
-                elevation: 0,
-                margin: const EdgeInsets.only(bottom: AppDimensions.space12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppDimensions.radiusS),
-                  side: const BorderSide(color: AppColors.borderLight),
-                ),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.all(AppDimensions.space12),
-                  leading: CircleAvatar(
-                    backgroundColor: AppColors.marcatGold.withOpacity(0.15),
-                    foregroundColor: AppColors.marcatGold,
-                    child: Text(
-                      _getInitials(staff),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  title: Text(
-                    'Staff ID: ${staff.id.substring(0, 8)}…',
-                    style: AppTextStyles.titleMedium,
-                  ),
-                  subtitle: Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.storefront,
-                            size: AppDimensions.iconS,
-                            color: AppColors.textSecondary),
-                        const SizedBox(width: AppDimensions.space4),
-                        Text(
-                          staff.assignedStoreId != null
-                              ? 'Store ${staff.assignedStoreId}'
-                              : 'Unassigned',
-                          style: AppTextStyles.labelSmall
-                              .copyWith(color: AppColors.textSecondary),
-                        ),
-                      ],
-                    ),
-                  ),
-                  //  TODO   trailing: MarcatStatusBadge.custom(
-                  //       label: staff.isActive ? 'ACTIVE' : 'INACTIVE',
-                  //       color: staff.isActive
-                  //           ? AppColors.statusGreen
-                  //           : AppColors.statusAmber,
-                  //     ),
-                  onTap: () {
-                    // TODO: navigate to staff detail / edit screen
-                  },
-                ),
+              return _StaffCard(
+                staff: staff,
+                initials: _getInitials(staff),
               );
             },
           );
         }),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _StaffCard extends StatelessWidget {
+  const _StaffCard({required this.staff, required this.initials});
+
+  final StaffModel staff;
+  final String initials;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: AppColors.marcatNavy,
+          child: Text(
+            initials,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+            ),
+          ),
+        ),
+        title: Text(
+          '${staff.firstName} ${staff.lastName ?? ''}',
+          style: AppTextStyles.titleSmall,
+        ),
+        subtitle: Text(
+          staff.role?.dbValue ?? 'Staff',
+          style: AppTextStyles.bodySmall,
+        ),
+        trailing:
+            const Icon(Icons.chevron_right, color: AppColors.textDisabled),
+        onTap: () {
+          // TODO: navigate to staff detail / edit screen
+        },
       ),
     );
   }

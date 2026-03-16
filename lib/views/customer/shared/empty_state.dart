@@ -3,14 +3,8 @@
 import 'package:flutter/material.dart';
 import 'brand.dart';
 
-/// Consistent empty / error / loading state used across all pages.
+/// Consistent empty / error / loading state used across all customer pages.
 class EmptyState extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String? subtitle;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
   const EmptyState({
     super.key,
     required this.icon,
@@ -20,6 +14,12 @@ class EmptyState extends StatelessWidget {
     this.onAction,
   });
 
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
   @override
   Widget build(BuildContext context) => Center(
         child: Padding(
@@ -27,6 +27,7 @@ class EmptyState extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Icon container
               Container(
                 width: 80,
                 height: 80,
@@ -38,16 +39,20 @@ class EmptyState extends StatelessWidget {
                 child: Icon(icon, size: 36, color: kSlate),
               ),
               const SizedBox(height: 24),
+
+              // Title
               Text(
                 title,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontFamily: 'Playfair Display',
+                  fontFamily: 'PlayfairDisplay',
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
                   color: kNavy,
                 ),
               ),
+
+              // Subtitle
               if (subtitle != null) ...[
                 const SizedBox(height: 10),
                 Text(
@@ -60,6 +65,8 @@ class EmptyState extends StatelessWidget {
                   ),
                 ),
               ],
+
+              // Action button
               if (actionLabel != null && onAction != null) ...[
                 const SizedBox(height: 28),
                 SizedBox(
@@ -89,53 +96,23 @@ class EmptyState extends StatelessWidget {
       );
 }
 
-/// A simple loading skeleton placeholder row.
-class SkeletonBox extends StatefulWidget {
-  final double width;
+// ─────────────────────────────────────────────────────────────────────────────
+// SkeletonRow — simple shimmer placeholder row
+// ─────────────────────────────────────────────────────────────────────────────
+
+class SkeletonRow extends StatelessWidget {
+  const SkeletonRow({super.key, this.height = 60});
+
   final double height;
-  final double radius;
-
-  const SkeletonBox({
-    super.key,
-    this.width = double.infinity,
-    required this.height,
-    this.radius = 6,
-  });
 
   @override
-  State<SkeletonBox> createState() => _SkeletonBoxState();
-}
-
-class _SkeletonBoxState extends State<SkeletonBox>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _c;
-  late Animation<double> _a;
-
-  @override
-  void initState() {
-    super.initState();
-    _c = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1100))
-      ..repeat(reverse: true);
-    _a = Tween<double>(begin: 0.4, end: 0.9).animate(_c);
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-        animation: _a,
-        builder: (_, __) => Container(
-          width: widget.width,
-          height: widget.height,
-          decoration: BoxDecoration(
-            color: kCream.withOpacity(_a.value),
-            borderRadius: BorderRadius.circular(widget.radius),
-          ),
+  Widget build(BuildContext context) => Container(
+        height: height,
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        decoration: BoxDecoration(
+          color: kCream,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: kBorderColor),
         ),
       );
 }

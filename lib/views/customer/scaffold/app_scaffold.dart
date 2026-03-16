@@ -62,7 +62,7 @@ class _CustomerScaffoldState extends State<CustomerScaffold> {
       ),
 
       // ── Right end-drawer: main navigation ─────────────────────────────────
-      endDrawer: const ClientDrawer(),
+      endDrawer: const CustomerDrawer(),
 
       // ── Left drawer: filter / sort (optional) ─────────────────────────────
       drawer: widget.filterDrawer != null

@@ -189,10 +189,6 @@ class AccountController extends GetxController {
   Future<void> fetchAddresses(String customerId) async {
     isLoadingAddresses.value = true;
     try {
-      // FIX: removed QA mock bypass that short-circuited the real Supabase
-      // query when customerId == '123e4567-...'. Real customers with that UUID
-      // would receive fake addresses and real address operations would silently
-      // fail. Removed entirely — the real query always runs now.
       final data = await _client
           .from(SupabaseConstants.customerAddresses)
           .select()
@@ -264,13 +260,6 @@ class AccountController extends GetxController {
   // LOYALTY
   // ═══════════════════════════════════════════════════════════════════════════
 
-  /// Fetches paginated loyalty transactions and stores them in
-  /// [loyaltyTransactions].
-  ///
-  /// FIX: was previously typed as `Future<void>` but callers were assigning
-  /// its return value to a local variable and then trying to use it.  The
-  /// result is already stored in [loyaltyTransactions] so callers can just
-  /// read that observable directly after awaiting this method.
   Future<void> fetchLoyaltyTransactions({
     required String customerId,
     int page = 0,

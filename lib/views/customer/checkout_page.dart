@@ -150,7 +150,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     try {
       final adminCtrl = Get.find<AdminController>();
       if (adminCtrl.stores.isEmpty) {
-        await adminCtrl.fetchStores(activeOnly: true);
+        await adminCtrl.fetchStores();
       }
       final onlineStoreId =
           adminCtrl.stores.isNotEmpty ? adminCtrl.stores.first.id : 1;
@@ -180,8 +180,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
         duration: const Duration(seconds: 4),
       );
     } catch (e) {
-      // FIX: was no catch block — isPlacingOrder stayed true permanently on
-      // failure, locking the user out of retrying.
       Get.snackbar(
         'Order Failed',
         'Could not place your order: ${e.toString()}',
@@ -190,7 +188,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
         colorText: Colors.red.shade900,
       );
     } finally {
-      // FIX: always reset loading state regardless of success or failure.
       if (mounted) setState(() => isPlacingOrder = false);
     }
   }

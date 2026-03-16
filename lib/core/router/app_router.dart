@@ -37,6 +37,8 @@ import 'package:marcat/views/pos/terminal/pos_terminal_screen.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 
 class AppRoutes {
+  AppRoutes._();
+
   // Auth
   static const String login = '/auth/login';
   static const String register = '/auth/register';
@@ -61,16 +63,16 @@ class AppRoutes {
   static const String orders = '/app/profile/orders';
   static const String orderDetail = '/app/profile/orders/:id';
 
+  // Informational
+  static const String sizeGuide = '/app/size-guide';
+  static const String returns = '/app/returns';
+
   // Admin
   static const String adminDashboard = '/admin/dashboard';
   static const String adminProductsCreate = '/admin/products/create';
   static const String adminProductsEdit = '/admin/products/:id/edit';
   static const String adminOrders = '/admin/orders/:id';
   static const String adminStaff = '/admin/staff/add';
-
-  // Informational
-  static const String sizeGuide = '/app/size-guide';
-  static const String returns = '/app/returns';
 
   // POS
   static const String posAuth = '/pos/auth';
@@ -89,6 +91,8 @@ class AppRoutes {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class AppPages {
+  AppPages._();
+
   static final pages = [
     // ── Auth ─────────────────────────────────────────────────────────────────
     GetPage(name: AppRoutes.login, page: () => const LoginScreen()),
@@ -103,7 +107,7 @@ class AppPages {
     GetPage(name: AppRoutes.contact, page: () => const ContactPage()),
     GetPage(name: AppRoutes.shop, page: () => const ShopPage()),
 
-    // Category sub-routes (all share ShopPage with a different initial filter)
+    // Category sub-routes
     GetPage(name: AppRoutes.shopWomen, page: () => const ShopPage()),
     GetPage(name: AppRoutes.shopMen, page: () => const ShopPage()),
     GetPage(name: AppRoutes.shopKids, page: () => const ShopPage()),
@@ -132,8 +136,6 @@ class AppPages {
     GetPage(
       name: AppRoutes.category,
       page: () {
-        // FIX: was int.parse(Get.parameters['id']!) — crashes on bad URL.
-        // Now uses int.tryParse with a null-safe fallback screen.
         final categoryId = int.tryParse(Get.parameters['id'] ?? '');
         return ShopPage(initialCategoryId: categoryId);
       },
@@ -151,7 +153,6 @@ class AppPages {
     GetPage(
       name: AppRoutes.orderDetail,
       page: () {
-        // FIX: was int.parse(Get.parameters['id']!) — FormatException on bad param.
         final orderId = int.tryParse(Get.parameters['id'] ?? '');
         if (orderId == null) {
           return const _InvalidRouteScreen(message: 'Invalid order ID.');
@@ -159,6 +160,15 @@ class AppPages {
         return CustomerOrderDetailPage(orderId: orderId);
       },
       middlewares: [AuthGuard()],
+    ),
+
+    GetPage(
+      name: AppRoutes.sizeGuide,
+      page: () => const _ComingSoonScreen(title: 'Size Guide'),
+    ),
+    GetPage(
+      name: AppRoutes.returns,
+      page: () => const _ComingSoonScreen(title: 'Returns & Exchanges'),
     ),
 
     // ── Admin app ─────────────────────────────────────────────────────────────
@@ -175,7 +185,6 @@ class AppPages {
     GetPage(
       name: AppRoutes.adminProductsEdit,
       page: () {
-        // FIX: was int.parse(Get.parameters['id']!) — crashes on bad URL.
         final productId = int.tryParse(Get.parameters['id'] ?? '');
         if (productId == null) {
           return const _InvalidRouteScreen(message: 'Invalid product ID.');
@@ -187,7 +196,6 @@ class AppPages {
     GetPage(
       name: AppRoutes.adminOrders,
       page: () {
-        // FIX: was int.parse(Get.parameters['id']!) — crashes on bad URL.
         final orderId = int.tryParse(Get.parameters['id'] ?? '');
         if (orderId == null) {
           return const _InvalidRouteScreen(message: 'Invalid order ID.');
@@ -218,9 +226,7 @@ class AppPages {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // _InvalidRouteScreen
-// Shown whenever a route parameter is missing or non-parseable.
-// FIX: previously the app would throw an unhandled exception and show a red
-// error screen. Now it gracefully shows a message and a back button.
+// Shown when a route parameter is missing or non-parseable.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _InvalidRouteScreen extends StatelessWidget {
@@ -229,25 +235,15 @@ class _InvalidRouteScreen extends StatelessWidget {
   final String message;
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Navigation Error'),
-        leading: BackButton(onPressed: () => Get.back()),
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(),
+        body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.link_off_rounded, size: 56, color: Colors.grey),
+              const Icon(Icons.link_off, size: 48),
               const SizedBox(height: 16),
-              Text(
-                message,
-                style: Theme.of(context).textTheme.titleMedium,
-                textAlign: TextAlign.center,
-              ),
+              Text(message, textAlign: TextAlign.center),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () => Get.back(),
@@ -256,7 +252,35 @@ class _InvalidRouteScreen extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
+      );
+}
+
+class _ComingSoonScreen extends StatelessWidget {
+  const _ComingSoonScreen({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: Text(title)),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.construction_outlined, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                '$title coming soon.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 24),
+              OutlinedButton(
+                onPressed: () => Get.back(),
+                child: const Text('Go Back'),
+              ),
+            ],
+          ),
+        ),
+      );
 }

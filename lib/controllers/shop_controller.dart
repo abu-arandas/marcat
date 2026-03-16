@@ -1,15 +1,9 @@
 // lib/controllers/shop_controller.dart
-//
-// FIX: ShopController was defined inside lib/views/customer/shop_page.dart,
-// mixing business logic with UI code. Extracted to its own file under
-// lib/controllers/ to respect the project's controller-first architecture.
-// shop_page.dart now imports this file.
 
 import 'package:get/get.dart';
 
 import 'package:marcat/controllers/auth_controller.dart';
 import 'package:marcat/controllers/product_controller.dart';
-import 'package:marcat/core/router/app_router.dart';
 import 'package:marcat/models/product_model.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -65,81 +59,109 @@ class ShopController extends GetxController {
     try {
       // Reads the already-loaded wishlist from ProductController's memory —
       // no extra network request.
-      wishlistedIds.value =
-          _productCtrl.wishlistItems.map((w) => w.productId).toSet();
-    } catch (_) {}
+      wishlistedIds.assignAll(
+        _productCtrl.wishlistItems.map((w) => w.productId).toSet(),
+      );
+    } catch (_) {
+      // Non-critical
+    }
   }
 
   Future<void> toggleWishlist(int productId) async {
     final user = _auth.state.value.user;
-    if (user == null) {
-      Get.toNamed(AppRoutes.login);
-      return;
-    }
+    if (user == null) return;
+
     try {
-      if (wishlistedIds.contains(productId)) {
-        await _productCtrl.removeFromWishlist(user.id, productId);
-        wishlistedIds.remove(productId);
-      } else {
-        await _productCtrl.addToWishlist(user.id, productId);
+      final nowIn = await _productCtrl.toggleWishlist(user.id, productId);
+      if (nowIn) {
         wishlistedIds.add(productId);
+      } else {
+        wishlistedIds.remove(productId);
       }
-    } catch (e) {
-      Get.snackbar('Error', e.toString());
+    } catch (_) {
+      // Non-critical
     }
   }
 
+  bool isWishlisted(int productId) => wishlistedIds.contains(productId);
+
   // ─────────────────────────────────────────────────────────────────────────────
-  // PRODUCTS — FETCH & FILTER
+  // PRODUCTS
   // ─────────────────────────────────────────────────────────────────────────────
 
   Future<void> fetchProducts({bool reset = false}) async {
+    if (isLoading.value) return;
+
     if (reset) {
       _page = 0;
-      products.clear();
       hasMore.value = true;
+      products.clear();
     }
+
     if (!hasMore.value) return;
+
     isLoading.value = true;
+
     try {
-      final (items, total) = await _productCtrl.fetchProducts(
+      final fetched = await _productCtrl.fetchProducts(
         page: _page,
         pageSize: _pageSize,
-        query: searchQuery.value.isEmpty ? null : searchQuery.value,
         categoryId: selectedCategoryId.value,
-        minPrice: minPrice.value,
-        maxPrice: maxPrice.value,
         sortBy: sortBy.value,
         ascending: ascending.value,
+        minPrice: minPrice.value,
+        maxPrice: maxPrice.value,
+        query: searchQuery.value.isNotEmpty ? searchQuery.value : null,
       );
-      products.addAll(items);
+
+      if (fetched.$1.length < _pageSize) {
+        hasMore.value = false;
+      }
+
+      if (reset) {
+        products.assignAll(fetched.$1);
+      } else {
+        products.addAll(fetched.$1);
+      }
+
       _page++;
-      hasMore.value = products.length < total;
     } catch (e) {
-      Get.snackbar('Error', e.toString());
+      // Surface error — let views decide how to display
+      rethrow;
     } finally {
       isLoading.value = false;
     }
   }
 
-  /// Applies new filter / sort values and reloads from page 0.
+  void loadMore() => fetchProducts(reset: false);
+
+  // ── Filter helpers ─────────────────────────────────────────────────────────
+
   void applyFilters({
-    String? sort,
-    bool? asc,
+    int? categoryId,
     double? minP,
     double? maxP,
-    int? catId,
+    String? sort,
+    bool? asc,
   }) {
-    sortBy.value = sort ?? sortBy.value;
-    ascending.value = asc ?? ascending.value;
+    selectedCategoryId.value = categoryId;
     minPrice.value = minP;
     maxPrice.value = maxP;
-    selectedCategoryId.value = catId;
+    if (sort != null) sortBy.value = sort;
+    if (asc != null) ascending.value = asc;
     fetchProducts(reset: true);
   }
 
-  /// Updates the search query and reloads from page 0.
-  void search(String q) {
+  void clearFilters() {
+    selectedCategoryId.value = initialCategoryId;
+    minPrice.value = null;
+    maxPrice.value = null;
+    sortBy.value = 'created_at';
+    ascending.value = false;
+    fetchProducts(reset: true);
+  }
+
+  void setSearchQuery(String q) {
     searchQuery.value = q;
     fetchProducts(reset: true);
   }

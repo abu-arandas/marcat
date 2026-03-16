@@ -136,12 +136,6 @@ class _ProfilePageState extends State<ProfilePage> {
     if (user == null) return;
     if (mounted) setState(() => loyaltyLoading = true);
     try {
-      // FIX: was `final txs = await _accountCtrl.fetchLoyaltyTransactions(...)`
-      // but fetchLoyaltyTransactions returns Future<void>.
-      // Then `loyaltyTransactions.addAll(txs)` was commented out, making the
-      // loyalty tab always show empty.
-      // Correct approach: await the fetch (which populates the controller's
-      // internal observable), then copy the result into our local list.
       await _accountCtrl.fetchLoyaltyTransactions(
         customerId: user.id,
         pageSize: 20,
@@ -164,12 +158,6 @@ class _ProfilePageState extends State<ProfilePage> {
     if (!pwFormKey.currentState!.validate()) return;
     if (mounted) setState(() => isChangingPw = true);
     try {
-      // FIX: was calling Supabase.instance.client.auth.updateUser() directly,
-      // which bypasses the AuthController and requires importing the raw
-      // supabase_flutter package in a view.  Routed through AuthController
-      // which owns all auth operations.
-      // Note: Supabase's password update doesn't require the current password
-      // on the client side — the JWT proves the session is authenticated.
       await _auth.updatePassword(newPwCtrl.text);
       currentPwCtrl.clear();
       newPwCtrl.clear();

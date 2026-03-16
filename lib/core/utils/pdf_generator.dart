@@ -185,7 +185,6 @@ class PdfGenerator {
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              // FIX: was 'Ã—' (garbled ×) — use the actual multiplication sign
               pw.Text(
                 '${item.quantity} \u00D7 ${item.unitPrice.toJOD()}',
                 style: pw.TextStyle(font: regular, fontSize: 10),

@@ -36,6 +36,6 @@ class InitialBinding extends Bindings {
     Get.lazyPut(() => DeliveryController(), fenix: true);
 
     // ── Search ───────────────────────────────────────────────────────────────
-    Get.put(SearchController(), permanent: true);
+    Get.put(MarcatSearchController(), permanent: true);
   }
 }

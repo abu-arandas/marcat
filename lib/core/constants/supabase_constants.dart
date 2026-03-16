@@ -9,20 +9,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class SupabaseConstants {
   SupabaseConstants._();
 
-  // ── Supabase project credentials ──────────────────────────────────────────
-  //
-  // FIX: the .env file was bundled into the APK as a plain-text asset, making
-  // SUPABASE_ANON_KEY trivially extractable with any APK decompiler.
-  //
-  // New dual-mode strategy:
-  //   • DEBUG  – reads from the .env file via flutter_dotenv (developer convenience).
-  //   • RELEASE – reads compile-time constants injected by --dart-define:
-  //       flutter build apk \
-  //         --dart-define=SUPABASE_URL=https://xxx.supabase.co \
-  //         --dart-define=SUPABASE_ANON_KEY=eyJxxx
-  //
-  // The .env file remains in pubspec assets only for debug; you can guard its
-  // inclusion with a Dart compile flag if you want a fully clean release build.
   static String get url {
     // --dart-define value takes precedence (release / CI builds).
     const buildTimeUrl = String.fromEnvironment('SUPABASE_URL');
@@ -53,7 +39,6 @@ class SupabaseConstants {
   static const String productSizes = 'product_sizes';
   static const String productImages = 'product_images';
   static const String storeProducts = 'store_products';
-  // FIX: actual DB table is 'store_inventory', not 'inventory'
   static const String inventory = 'store_inventory';
   static const String staff = 'staff';
   static const String staffAssignments = 'staff_assignments';
@@ -86,7 +71,6 @@ class SupabaseConstants {
   static const String rpcCreateOrderWithItems = 'create_order_with_items';
   static const String rpcSetDefaultAddress = 'set_default_address';
   static const String rpcIncrementOfferUsage = 'increment_offer_usage';
-  // FIX: was 'apply_offer_to_cart' — actual DB function name is 'apply_coupon'
   static const String rpcApplyOfferToCart = 'apply_coupon';
   static const String rpcProcessPosSale = 'process_pos_sale';
   static const String rpcApproveCommission = 'approve_commission';

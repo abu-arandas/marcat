@@ -3,7 +3,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-// FIX: cart_repository.dart → cart_controller.dart
 import 'package:marcat/controllers/cart_controller.dart';
 import 'package:marcat/models/cart_item_model.dart';
 
@@ -33,7 +32,6 @@ class _CartBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return GetBuilder<CartController>(
       builder: (ctrl) {
-        // FIX: was ctrl.isCartLoading — renamed to isLoading in merged CartController
         if (ctrl.isCartLoading) {
           return const Center(
             child: Padding(
@@ -369,7 +367,8 @@ class _OrderSummaryState extends State<_OrderSummary> {
                 children: [
                   _SummaryRow(
                     label: '${offer.offerName} (Coupon)',
-                    value: '- JOD ${widget.ctrl.discountTotal.toStringAsFixed(2)}',
+                    value:
+                        '- JOD ${widget.ctrl.discountTotal.toStringAsFixed(2)}',
                     accent: true,
                   ),
                   const SizedBox(height: 10),

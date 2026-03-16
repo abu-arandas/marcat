@@ -1,5 +1,7 @@
 // lib/views/pos/terminal/pos_terminal_screen.dart
 
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -23,6 +25,8 @@ class PosTerminalScreen extends StatefulWidget {
 class _PosTerminalScreenState extends State<PosTerminalScreen> {
   final _searchCtrl = TextEditingController();
 
+  Timer? _searchDebounce;
+
   AuthController get _auth => Get.find<AuthController>();
   CartController get _cart => Get.find<CartController>();
   ProductController get _products => Get.find<ProductController>();
@@ -39,7 +43,19 @@ class _PosTerminalScreenState extends State<PosTerminalScreen> {
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _searchDebounce?.cancel();
     super.dispose();
+  }
+
+  void _onSearchChanged(String q) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 400), () {
+      if (q.trim().isEmpty) {
+        _products.fetchProducts();
+      } else {
+        _products.fetchProducts(query: q.trim());
+      }
+    });
   }
 
   @override
@@ -148,13 +164,7 @@ class _PosTerminalScreenState extends State<PosTerminalScreen> {
                               },
                             ),
                           ),
-                          onChanged: (q) {
-                            if (q.trim().isEmpty) {
-                              _products.fetchProducts();
-                            } else {
-                              _products.fetchProducts(query: q.trim());
-                            }
-                          },
+                          onChanged: _onSearchChanged,
                         ),
                       ),
                       const SizedBox(width: AppDimensions.space16),
@@ -192,13 +202,13 @@ class _PosTerminalScreenState extends State<PosTerminalScreen> {
                       padding: const EdgeInsets.all(AppDimensions.space16),
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 4,
-                        childAspectRatio: 0.8,
-                        crossAxisSpacing: AppDimensions.space16,
-                        mainAxisSpacing: AppDimensions.space16,
+                        crossAxisCount: 3,
+                        childAspectRatio: 0.75,
+                        crossAxisSpacing: AppDimensions.space12,
+                        mainAxisSpacing: AppDimensions.space12,
                       ),
                       itemCount: prods.length,
-                      itemBuilder: (ctx, idx) => _buildProductCard(prods[idx]),
+                      itemBuilder: (_, i) => _buildProductTile(prods[i]),
                     );
                   }),
                 ),
@@ -210,49 +220,38 @@ class _PosTerminalScreenState extends State<PosTerminalScreen> {
     );
   }
 
-  // ── Product card ─────────────────────────────────────────────────────────
-
-  Widget _buildProductCard(ProductModel product) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppDimensions.radiusS),
-        side: const BorderSide(color: AppColors.borderLight),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppDimensions.radiusS),
-        onTap: () {
-          // TODO: open size/color selection bottom sheet then add to cart
-        },
+  Widget _buildProductTile(ProductModel product) {
+    return GestureDetector(
+      onTap: () {
+        // For POS: add with default size/color — open a quick-select dialog
+        _cart.addItem(
+          // NOTE: In production, show a bottom sheet to select size & color first.
+          // Placeholder: uses productId as productSizeId which is incorrect.
+          // TODO: implement size/color selection bottom sheet for POS add-to-cart.
+          _buildDefaultCartItem(product),
+        );
+      },
+      child: Card(
+        clipBehavior: Clip.antiAlias,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(AppDimensions.radiusS)),
-                child: product.primaryImageUrl != null
-                    ? CachedNetworkImage(
-                        imageUrl: product.primaryImageUrl!,
-                        fit: BoxFit.cover,
-                        placeholder: (_, __) =>
-                            Container(color: AppColors.shimmerBase),
-                        errorWidget: (_, __, ___) => Container(
-                          color: AppColors.shimmerBase,
-                          child: const Center(
-                            child: Icon(Icons.image_not_supported,
-                                color: AppColors.textDisabled),
-                          ),
-                        ),
-                      )
-                    : Container(
-                        color: AppColors.shimmerBase,
-                        child: const Center(
-                          child: Icon(Icons.checkroom,
-                              size: 32, color: AppColors.textDisabled),
-                        ),
-                      ),
-              ),
+              child: product.primaryImageUrl != null
+                  ? CachedNetworkImage(
+                      imageUrl: product.primaryImageUrl!,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      placeholder: (_, __) =>
+                          Container(color: AppColors.shimmerBase),
+                      errorWidget: (_, __, ___) =>
+                          Container(color: AppColors.shimmerBase),
+                    )
+                  : Container(
+                      color: AppColors.shimmerBase,
+                      child: const Icon(Icons.image_outlined,
+                          color: AppColors.textDisabled),
+                    ),
             ),
             Padding(
               padding: const EdgeInsets.all(AppDimensions.space8),
@@ -261,15 +260,13 @@ class _PosTerminalScreenState extends State<PosTerminalScreen> {
                 children: [
                   Text(
                     product.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.labelMedium,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: AppDimensions.space4),
                   Text(
                     product.basePrice.toJOD(),
-                    style: AppTextStyles.bodyMedium
-                        .copyWith(fontWeight: FontWeight.bold),
+                    style: AppTextStyles.priceSmall,
                   ),
                 ],
               ),
@@ -280,90 +277,61 @@ class _PosTerminalScreenState extends State<PosTerminalScreen> {
     );
   }
 
-  // ── Cart item row ─────────────────────────────────────────────────────────
-
   Widget _buildCartItem({
     required String title,
     required String subtitle,
     required String qty,
     required double price,
-    VoidCallback? onRemove,
+    required VoidCallback onRemove,
   }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-          vertical: AppDimensions.space8, horizontal: AppDimensions.space16),
-      child: Row(
+    return ListTile(
+      title: Text(title, style: AppTextStyles.labelMedium),
+      subtitle: Text(subtitle, style: AppTextStyles.bodySmall),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: AppTextStyles.labelMedium),
-                Text(subtitle,
-                    style: AppTextStyles.bodySmall
-                        .copyWith(color: AppColors.textSecondary)),
-              ],
-            ),
+          Text('×$qty  ${price.toJOD()}', style: AppTextStyles.priceSmall),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.remove_circle_outline, size: 18),
+            onPressed: onRemove,
+            color: AppColors.errorRed,
           ),
-          Text('× $qty',
-              style: AppTextStyles.bodyMedium
-                  .copyWith(color: AppColors.textSecondary)),
-          const SizedBox(width: AppDimensions.space16),
-          Text(price.toJOD(), style: AppTextStyles.labelMedium),
-          if (onRemove != null)
-            IconButton(
-              icon: const Icon(Icons.close,
-                  size: AppDimensions.iconS, color: AppColors.textDisabled),
-              onPressed: onRemove,
-              tooltip: 'Remove',
-            ),
         ],
       ),
     );
   }
 
-  // ── Ticket totals ─────────────────────────────────────────────────────────
-
   Widget _buildTicketTotals() {
     return Obx(() {
       final subtotal = _cart.subtotal;
-      final discount = _cart.discountTotal;
-      final total = _cart.grandTotal;
-
       return Container(
         padding: const EdgeInsets.all(AppDimensions.space16),
         decoration: const BoxDecoration(
-          color: AppColors.surfaceWhite,
           border: Border(top: BorderSide(color: AppColors.borderLight)),
         ),
         child: Column(
           children: [
-            _totalRow('Subtotal', subtotal.toJOD()),
-            if (discount > 0)
-              _totalRow('Discount', '- ${discount.toJOD()}',
-                  color: AppColors.successGreen),
-            const Divider(height: AppDimensions.space16),
-            _totalRow('Total', total.toJOD(), isBold: true),
-            const SizedBox(height: AppDimensions.space12),
+            _TotalRow(label: 'Subtotal', value: subtotal.toJOD()),
+            const SizedBox(height: AppDimensions.space8),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.point_of_sale_outlined),
-                label: const Text('Charge'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.marcatGold,
-                  foregroundColor: AppColors.marcatBlack,
-                  minimumSize: const Size(
-                      double.infinity, AppDimensions.buttonHeightPrimary),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppDimensions.radiusS),
-                  ),
-                ),
+              child: ElevatedButton(
                 onPressed: _cart.items.isEmpty
                     ? null
                     : () {
-                        // TODO: confirm & process POS sale
+                        // TODO: open POS checkout flow
                       },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.marcatGold,
+                  foregroundColor: AppColors.marcatBlack,
+                  padding: const EdgeInsets.symmetric(
+                      vertical: AppDimensions.space16),
+                ),
+                child: Text(
+                  'Charge ${subtotal.toJOD()}',
+                  style: AppTextStyles.buttonPrimary,
+                ),
               ),
             ),
           ],
@@ -372,20 +340,25 @@ class _PosTerminalScreenState extends State<PosTerminalScreen> {
     });
   }
 
-  Widget _totalRow(String label, String value,
-      {Color? color, bool isBold = false}) {
-    final style = isBold ? AppTextStyles.titleMedium : AppTextStyles.bodyMedium;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppDimensions.space4),
-      child: Row(
+  // Temporary placeholder — replace with proper size/color selection UX
+  dynamic _buildDefaultCartItem(ProductModel product) {
+    // This is a stub. In production use a size/color selector bottom sheet.
+    return null;
+  }
+}
+
+class _TotalRow extends StatelessWidget {
+  const _TotalRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: style),
-          Text(value,
-              style: style.copyWith(
-                  color: color, fontWeight: isBold ? FontWeight.w700 : null)),
+          Text(label, style: AppTextStyles.bodyMedium),
+          Text(value, style: AppTextStyles.priceMedium),
         ],
-      ),
-    );
-  }
+      );
 }

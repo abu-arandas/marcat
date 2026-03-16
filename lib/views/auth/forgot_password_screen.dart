@@ -7,9 +7,6 @@ import 'auth_scaffold.dart';
 import '../../core/constants/app_dimensions.dart';
 import '../../core/utils/snackbar_utils.dart';
 import '../../core/utils/validators.dart';
-// FIX: was importing repositories/auth_repository.dart and calling
-//      Get.find<AuthRepository>().forgotPassword() — the repository layer
-//      no longer exists; forgotPassword() now lives on AuthController.
 import 'package:marcat/controllers/auth_controller.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -35,7 +32,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
     try {
-      // FIX: was Get.find<AuthRepository>().forgotPassword(...)
       await Get.find<AuthController>().forgotPassword(_emailController.text);
       if (mounted) setState(() => _isSuccess = true);
     } catch (e) {

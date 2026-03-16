@@ -7,7 +7,6 @@ import 'auth_scaffold.dart';
 import '../../core/constants/app_dimensions.dart';
 import '../../core/utils/snackbar_utils.dart';
 import '../../core/utils/validators.dart';
-// FIX: was importing auth_provider.dart — replaced by auth_controller.dart
 import 'package:marcat/controllers/auth_controller.dart';
 import 'package:marcat/core/router/app_router.dart';
 
@@ -31,7 +30,6 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // FIX: was public submit() on a private State class — renamed to _submit()
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     try {

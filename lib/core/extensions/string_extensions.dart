@@ -39,7 +39,6 @@ extension StringExtensions on String {
 
   /// Generate a URL-safe slug (ASCII only; strips Arabic characters).
   String get toSlug => toLowerCase()
-      // FIX: was garbled UTF-8 — use Unicode range for Arabic letters
       .replaceAll(RegExp(r'[\u0600-\u06FF]', unicode: true), '')
       .replaceAll(RegExp(r'[^a-z0-9\s]'), '')
       .trim()

@@ -1,5 +1,6 @@
 // lib/main.dart
 
+import 'package:flutter/foundation.dart'; // kDebugMode
 import 'package:flutter/material.dart';
 import 'package:flutter_bootstrap5/flutter_bootstrap5.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -18,7 +19,15 @@ import 'controllers/locale_controller.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await dotenv.load(fileName: '.env');
+  if (kDebugMode) {
+    try {
+      await dotenv.load(fileName: '.env');
+    } catch (_) {
+      // .env may not exist in a freshly cloned repo — non-fatal in debug.
+      debugPrint(
+          '[main] .env file not found — ensure it exists for local dev.');
+    }
+  }
 
   await Supabase.initialize(
     url: SupabaseConstants.url,
@@ -41,7 +50,7 @@ class MarcatApp extends StatelessWidget {
           theme: AppTheme.light,
           themeMode: ThemeMode.light,
 
-          // ── Localisation ────────────────────────────────────────────────
+          // ── Localisation ─────────────────────────────────────────────
           locale: localeCtrl.locale,
           fallbackLocale: const Locale('en'),
           localizationsDelegates: const [
@@ -55,7 +64,7 @@ class MarcatApp extends StatelessWidget {
             Locale('ar'), // Arabic (RTL)
           ],
 
-          // ── Routing & DI ────────────────────────────────────────────────
+          // ── Routing & DI ─────────────────────────────────────────────
           initialBinding: InitialBinding(),
           initialRoute: AppRoutes.home,
           getPages: AppPages.pages,

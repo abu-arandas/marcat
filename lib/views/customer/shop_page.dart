@@ -1,8 +1,4 @@
 // lib/views/customer/shop_page.dart
-//
-// FIX: ShopController has been moved to lib/controllers/shop_controller.dart.
-// This file now only contains the ShopPage StatelessWidget and its private
-// UI sub-widgets. Business logic lives in the controller.
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -43,7 +39,12 @@ class ShopPage extends StatelessWidget {
       pageImage:
           'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1600&q=80',
       filterDrawer: _FilterDrawerContent(
-        onApply: ctrl.applyFilters,
+        onApply: ({asc, catId, maxP, minP, sort}) => ctrl.applyFilters(
+          asc: asc,
+          maxP: maxP,
+          minP: minP,
+          sort: sort,
+        ),
         initialMinPrice: ctrl.minPrice.value,
         initialMaxPrice: ctrl.maxPrice.value,
         initialCategoryId: ctrl.selectedCategoryId.value,
@@ -76,7 +77,13 @@ class _ShopBody extends StatelessWidget {
             Obx(() => _ShopToolbar(
                   productCount: ctrl.products.length,
                   sortBy: ctrl.sortBy.value,
-                  onApplyFilters: ctrl.applyFilters,
+                  onApplyFilters: ({asc, catId, maxP, minP, sort}) =>
+                      ctrl.applyFilters(
+                    asc: asc,
+                    maxP: maxP,
+                    minP: minP,
+                    sort: sort,
+                  ),
                 )),
             const SizedBox(height: 32),
 

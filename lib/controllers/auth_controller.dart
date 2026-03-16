@@ -86,9 +86,6 @@ class AuthController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    // FIX: mock QA auth was injected here and the real listener was commented
-    // out, meaning no real user could ever sign in or have their session
-    // restored on cold start. Restored the real auth listener.
     _subscribeToAuthChanges();
   }
 
@@ -136,7 +133,6 @@ class AuthController extends GetxController {
       update();
       _redirectBasedOnRole();
     } catch (e, s) {
-      // FIX: was catch (e) — stack trace was silently discarded.
       debugPrint('[AuthController._loadUserData] $e\n$s');
       state.value = AuthState(error: e.toString());
     }
@@ -172,9 +168,6 @@ class AuthController extends GetxController {
   Future<void> signIn(String email, String password) async {
     state.value = state.value.copyWith(isLoading: true, error: null);
     try {
-      // FIX: entire method body was replaced with a hardcoded QA mock and a
-      // 'return' statement before the real Supabase call. Removed entirely.
-      // Real signInWithPassword is now called — auth listener does the rest.
       await _client.auth.signInWithPassword(
         email: email.trim(),
         password: password,
@@ -215,10 +208,6 @@ class AuthController extends GetxController {
         throw const AppException(
             message: 'Registration failed. Please try again.');
       }
-      // FIX: isLoading was never reset on the success path when the auth
-      // state-change listener fires slowly. Reset it here as a safety net.
-      // The listener's _loadUserData() will overwrite with the full state
-      // once it completes.
       state.value = state.value.copyWith(isLoading: false);
     } on sb.AuthException catch (e, s) {
       state.value = AuthState(error: e.message);

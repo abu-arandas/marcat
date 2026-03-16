@@ -6,13 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bootstrap5/flutter_bootstrap5.dart';
 import 'package:get/get.dart';
 
-// FIX: auth_provider.dart → auth_controller.dart
 import '../../../../controllers/auth_controller.dart';
-// FIX: cart_repository.dart → cart_controller.dart
 import '../../../../controllers/cart_controller.dart';
-// FIX: category_repository.dart → product_controller.dart
-//      Categories are pre-loaded by ProductController.onInit().
-//      CategoryRepository no longer exists.
 import '../../../../controllers/product_controller.dart';
 import '../../../../core/extensions/string_extensions.dart';
 import '../../../../core/router/app_router.dart';
@@ -51,11 +46,6 @@ class CustomerAppBar extends StatefulWidget implements PreferredSizeWidget {
 }
 
 class _CustomerAppBarState extends State<CustomerAppBar> {
-  // FIX: removed local `categories` field and the initState CategoryRepository
-  //      fetch.  Categories are owned by ProductController (loaded in its
-  //      onInit) and are read reactively via GetBuilder<ProductController>
-  //      in the build method.
-
   bool get _isHome => widget.pageName.toLowerCase() == 'home';
   bool get _isTransparent => _isHome && !widget.scrolled;
 
@@ -227,9 +217,6 @@ class _CustomerAppBarState extends State<CustomerAppBar> {
                 ),
 
                 // ── Category row (desktop/tablet) ────────────────────────────
-                // FIX: was reading from a local `categories` field populated by
-                //      CategoryRepository in initState.  Now reads directly from
-                //      ProductController via GetBuilder — no repository needed.
                 if (isDesktop || isTablet)
                   GetBuilder<ProductController>(
                     builder: (productCtrl) {
@@ -271,7 +258,6 @@ class _CustomerAppBarState extends State<CustomerAppBar> {
   Widget _textButton({required String title, required String route}) {
     final isActive = Get.currentRoute.contains(route);
 
-    // FIX: was MaterialStateProperty / MaterialState
     Color resolveColor(Set<WidgetState> states) {
       if (states.contains(WidgetState.hovered) ||
           states.contains(WidgetState.focused) ||

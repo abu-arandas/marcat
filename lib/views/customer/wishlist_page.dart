@@ -30,9 +30,6 @@ class _WishlistPageState extends State<WishlistPage> {
   ProductController get _productCtrl => Get.find<ProductController>();
   AuthController get _auth => Get.find<AuthController>();
 
-  // FIX: was using _auth.currentAuthUser?.id (raw Supabase User).
-  // Use the controller's typed state instead — consistent with the rest of
-  // the app and does not require a raw Supabase import.
   String? get _userId => _auth.state.value.user?.id;
 
   @override
@@ -90,11 +87,6 @@ class _WishlistPageState extends State<WishlistPage> {
     }
   }
 
-  // FIX: was calling _cart.addItem(CartItemModel(productSizeId: product.id ...))
-  // which is a type-level bug — product.id ≠ productSizeId.  Worse, no size
-  // was selected, so the order would reference a non-existent size variant.
-  // Correct behaviour: navigate to the product detail page so the user can
-  // select a size before adding to cart.
   void viewProduct(int productId) {
     Get.toNamed(AppRoutes.productOf(productId));
   }

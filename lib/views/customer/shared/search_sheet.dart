@@ -13,8 +13,8 @@ class SearchSheet extends StatelessWidget {
       showDialog(context: context, builder: (_) => SearchSheet());
 
   @override
-  Widget build(BuildContext context) => GetBuilder<SearchController>(
-        init: SearchController(),
+  Widget build(BuildContext context) => GetBuilder<MarcatSearchController>(
+        init: MarcatSearchController(),
         builder: (ctrl) => AlertDialog(
           title: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -70,7 +70,7 @@ class SearchSheet extends StatelessWidget {
 class _SearchField extends StatelessWidget {
   const _SearchField({required this.ctrl});
 
-  final SearchController ctrl;
+  final MarcatSearchController ctrl;
 
   @override
   Widget build(BuildContext context) => TextField(
@@ -86,7 +86,7 @@ class _SearchField extends StatelessWidget {
             color: Theme.of(context).colorScheme.primary,
           ),
           suffixIcon: Obx(
-            () => ctrl.isSearching.value
+            () => ctrl.isLoading.value
                 ? const Padding(
                     padding: EdgeInsets.all(12),
                     child: SizedBox(

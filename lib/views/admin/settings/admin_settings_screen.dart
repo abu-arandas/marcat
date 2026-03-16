@@ -9,7 +9,6 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../models/user_model.dart';
-import 'package:marcat/core/router/app_router.dart';
 
 class AdminSettingsScreen extends StatelessWidget {
   const AdminSettingsScreen({super.key});
@@ -32,8 +31,7 @@ class AdminSettingsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // FIX: wrapped in Obx so the header reacts to auth state changes
-                // (e.g. avatar upload, name update, sign-out).
+                // ✅ Wrapped in Obx so header reacts to auth state changes
                 Obx(() {
                   final user = authCtrl.state.value.user;
                   return _buildProfileHeader(user);
@@ -69,53 +67,24 @@ class AdminSettingsScreen extends StatelessWidget {
                 const SizedBox(height: AppDimensions.space24),
 
                 _buildSettingsSection(
-                  title: 'System Settings',
-                  icon: Icons.settings_applications,
-                  items: [
-                    _SettingsItem(
-                      title: 'Notifications',
-                      subtitle: 'Email and push notification preferences',
-                      icon: Icons.notifications_none,
-                      onTap: () {},
-                    ),
-                    _SettingsItem(
-                      title: 'Language',
-                      subtitle: 'App display language',
-                      icon: Icons.language,
-                      onTap: () {},
-                    ),
-                    _SettingsItem(
-                      title: 'Security',
-                      subtitle: 'Password, two-factor authentication',
-                      icon: Icons.security_outlined,
-                      onTap: () {},
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: AppDimensions.space24),
-
-                _buildSettingsSection(
                   title: 'Account',
                   icon: Icons.manage_accounts_outlined,
                   items: [
                     _SettingsItem(
-                      title: 'Edit Profile',
-                      subtitle: 'Update your name, avatar, and contact info',
-                      icon: Icons.person_outline,
-                      onTap: () => Get.toNamed(AppRoutes.profile),
+                      title: 'Change Password',
+                      subtitle: 'Update your admin account password',
+                      icon: Icons.lock_outline,
+                      onTap: () {},
                     ),
                     _SettingsItem(
                       title: 'Sign Out',
-                      subtitle: 'Sign out of your admin account',
-                      icon: Icons.logout_rounded,
-                      iconColor: AppColors.statusRed,
-                      onTap: () => Get.find<AuthController>().signOut(),
+                      subtitle: 'Sign out of the admin panel',
+                      icon: Icons.logout,
+                      onTap: () => authCtrl.signOut(),
+                      isDestructive: true,
                     ),
                   ],
                 ),
-
-                const SizedBox(height: AppDimensions.space32),
               ],
             ),
           ),
@@ -124,105 +93,105 @@ class AdminSettingsScreen extends StatelessWidget {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Profile header
-  // FIX: parameter changed from supabase_flutter.User? to UserModel?
-  // ─────────────────────────────────────────────────────────────────────────
   Widget _buildProfileHeader(UserModel? user) {
-    return Container(
-      padding: const EdgeInsets.all(AppDimensions.space24),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceWhite,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusS),
-      ),
-      child: Row(
-        children: [
-          // Avatar
-          CircleAvatar(
-            radius: 32,
-            backgroundColor: AppColors.borderMedium,
-            backgroundImage:
-                user?.avatarUrl != null ? NetworkImage(user!.avatarUrl!) : null,
-            child: user?.avatarUrl == null
-                ? Text(
-                    user?.firstName.isNotEmpty == true
-                        ? user!.firstName[0].toUpperCase()
-                        : 'A',
-                    style: AppTextStyles.headlineMedium,
-                  )
-                : null,
-          ),
-          const SizedBox(width: AppDimensions.space16),
-
-          // Name & role
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  user?.fullName ?? 'Admin',
-                  style: AppTextStyles.titleMedium,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  user?.role.dbValue.replaceAll('_', ' ').toUpperCase() ??
-                      'ADMIN',
-                  style: AppTextStyles.labelSmall.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppDimensions.space16),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 32,
+              backgroundColor: AppColors.borderMedium,
+              backgroundImage: user?.avatarUrl != null
+                  ? NetworkImage(user!.avatarUrl!)
+                  : null,
+              child: user?.avatarUrl == null
+                  ? Text(
+                      user?.firstName.substring(0, 1).toUpperCase() ?? 'A',
+                      style: AppTextStyles.titleLarge,
+                    )
+                  : null,
             ),
-          ),
-        ],
+            const SizedBox(width: AppDimensions.space16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${user?.firstName ?? ''} ${user?.lastName ?? ''}',
+                    style: AppTextStyles.titleMedium,
+                  ),
+                  Text(
+                    user?.role.dbValue ?? 'Admin',
+                    style: AppTextStyles.bodySmall
+                        .copyWith(color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Settings section builder
-  // ─────────────────────────────────────────────────────────────────────────
   Widget _buildSettingsSection({
     required String title,
     required IconData icon,
     required List<_SettingsItem> items,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surfaceWhite,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusS),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Section header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppDimensions.space16,
-              AppDimensions.space16,
-              AppDimensions.space16,
-              AppDimensions.space8,
-            ),
-            child: Row(
-              children: [
-                Icon(icon, size: 18, color: AppColors.textSecondary),
-                const SizedBox(width: AppDimensions.space8),
-                Text(title, style: AppTextStyles.titleSmall),
-              ],
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 18, color: AppColors.textSecondary),
+            const SizedBox(width: 8),
+            Text(title.toUpperCase(),
+                style: AppTextStyles.labelSmall.copyWith(
+                    color: AppColors.textSecondary, letterSpacing: 1)),
+          ],
+        ),
+        const SizedBox(height: AppDimensions.space8),
+        Card(
+          child: Column(
+            children: items.map((item) {
+              final isLast = item == items.last;
+              return Column(
+                children: [
+                  ListTile(
+                    leading: Icon(
+                      item.icon,
+                      color: item.isDestructive
+                          ? AppColors.errorRed
+                          : AppColors.marcatSlate,
+                    ),
+                    title: Text(
+                      item.title,
+                      style: item.isDestructive
+                          ? AppTextStyles.labelMedium
+                              .copyWith(color: AppColors.errorRed)
+                          : AppTextStyles.labelMedium,
+                    ),
+                    subtitle:
+                        Text(item.subtitle, style: AppTextStyles.bodySmall),
+                    trailing: const Icon(Icons.chevron_right,
+                        color: AppColors.textDisabled),
+                    onTap: item.onTap,
+                  ),
+                  if (!isLast)
+                    const Divider(
+                        height: 1, indent: 56, color: AppColors.borderLight),
+                ],
+              );
+            }).toList(),
           ),
-          const Divider(height: 1),
-
-          // Items
-          ...items.map((item) => _SettingsTile(item: item)),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// _SettingsItem  — data class
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SettingsItem {
@@ -231,39 +200,12 @@ class _SettingsItem {
     required this.subtitle,
     required this.icon,
     required this.onTap,
-    this.iconColor,
+    this.isDestructive = false,
   });
 
   final String title;
   final String subtitle;
   final IconData icon;
   final VoidCallback onTap;
-  final Color? iconColor;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// _SettingsTile  — list tile widget
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _SettingsTile extends StatelessWidget {
-  const _SettingsTile({required this.item});
-
-  final _SettingsItem item;
-
-  @override
-  Widget build(BuildContext context) => ListTile(
-        leading: Icon(
-          item.icon,
-          size: 20,
-          color: item.iconColor ?? AppColors.textSecondary,
-        ),
-        title: Text(item.title, style: AppTextStyles.bodyMedium),
-        subtitle: Text(item.subtitle, style: AppTextStyles.bodySmall),
-        trailing: Icon(
-          Icons.chevron_right_rounded,
-          size: 18,
-          color: AppColors.textSecondary,
-        ),
-        onTap: item.onTap,
-      );
+  final bool isDestructive;
 }

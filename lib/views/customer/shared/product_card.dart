@@ -72,8 +72,6 @@ class _ProductCardState extends State<ProductCard> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // FIX: was comparing ProductStatus enum to String 'active'.
-                          //      Must compare enum to enum value.
                           if (widget.product.status == ProductStatus.active)
                             _Badge(label: 'NEW', color: kNavy),
                         ],

@@ -7,7 +7,6 @@ import 'auth_scaffold.dart';
 import '../../core/constants/app_dimensions.dart';
 import '../../core/utils/snackbar_utils.dart';
 import '../../core/utils/validators.dart';
-// FIX: was importing auth_provider.dart — replaced by auth_controller.dart
 import 'package:marcat/controllers/auth_controller.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -175,10 +174,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         setState(() => _obscureConfirm = !_obscureConfirm),
                   ),
                 ),
-                // FIX: Pass a function that evaluates the current password text
                 validator: (val) {
-                  if (val == null || val.isEmpty) return 'This field is required';
-                  if (val != _passwordController.text) return 'Passwords do not match';
+                  if (val == null || val.isEmpty) {
+                    return 'This field is required';
+                  }
+                  if (val != _passwordController.text) {
+                    return 'Passwords do not match';
+                  }
                   return null;
                 },
                 onFieldSubmitted: (_) => _submit(),
