@@ -5,8 +5,12 @@ import 'package:flutter_bootstrap5/flutter_bootstrap5.dart';
 
 import 'scaffold/app_scaffold.dart';
 import 'shared/brand.dart';
-import 'shared/marcat_buttons.dart';
+import 'shared/buttons.dart';
 import 'shared/section_header.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ContactPage
+// ─────────────────────────────────────────────────────────────────────────────
 
 class ContactPage extends StatelessWidget {
   const ContactPage({super.key});
@@ -19,6 +23,10 @@ class ContactPage extends StatelessWidget {
         body: const _ContactBody(),
       );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _ContactBody
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _ContactBody extends StatelessWidget {
   const _ContactBody();
@@ -34,7 +42,9 @@ class _ContactBody extends StatelessWidget {
       );
 }
 
-// â”€â”€â”€ Main contact section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
+// _ContactMain
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _ContactMain extends StatelessWidget {
   const _ContactMain();
@@ -56,15 +66,17 @@ class _ContactMain extends StatelessWidget {
           : Column(
               children: [
                 _ContactInfo(),
-                SizedBox(height: 40),
-                _ContactForm(),
+                const SizedBox(height: 40),
+                const _ContactForm(),
               ],
             ),
     );
   }
 }
 
-// â”€â”€â”€ Contact info panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
+// _ContactInfo — address / hours / social panel
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _ContactInfo extends StatelessWidget {
   @override
@@ -73,7 +85,7 @@ class _ContactInfo extends StatelessWidget {
         children: [
           const SectionHeader(
             eyebrow: 'Get In Touch',
-            title: 'We\'d Love\nTo Hear\nFrom You',
+            title: "We'd Love\nTo Hear\nFrom You",
           ),
           const SizedBox(height: 32),
           _InfoTile(
@@ -94,37 +106,16 @@ class _ContactInfo extends StatelessWidget {
           _InfoTile(
             icon: Icons.schedule_outlined,
             title: 'Working Hours',
-            value: 'Satâ€“Thu: 10am â€“ 10pm\nFri: 2pm â€“ 10pm',
+            value: 'Sat–Thu  10:00 – 22:00\nFri  14:00 – 22:00',
           ),
-          const SizedBox(height: 28),
-
-          // Social quick links
-          const Text(
-            'FOLLOW US',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: kSlate,
-              letterSpacing: 1.5,
-            ),
-          ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 24),
           Row(
             children: [
-              _SocialChip(
-                icon: Icons.camera_alt_outlined,
-                label: 'Instagram',
-              ),
-              const SizedBox(width: 8),
-              _SocialChip(
-                icon: Icons.facebook_outlined,
-                label: 'Facebook',
-              ),
-              const SizedBox(width: 8),
-              _SocialChip(
-                icon: Icons.chat_bubble_outline_rounded,
-                label: 'WhatsApp',
-              ),
+              _SocialChip(icon: Icons.language, label: 'Website'),
+              const SizedBox(width: 10),
+              _SocialChip(icon: Icons.camera_alt_outlined, label: 'Instagram'),
+              const SizedBox(width: 10),
+              _SocialChip(icon: Icons.facebook, label: 'Facebook'),
             ],
           ),
         ],
@@ -132,14 +123,15 @@ class _ContactInfo extends StatelessWidget {
 }
 
 class _InfoTile extends StatelessWidget {
-  final IconData icon;
-  final String title, value;
-
   const _InfoTile({
     required this.icon,
     required this.title,
     required this.value,
   });
+
+  final IconData icon;
+  final String title;
+  final String value;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -148,8 +140,8 @@ class _InfoTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 42,
-              height: 42,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 color: kCream,
                 borderRadius: BorderRadius.circular(8),
@@ -163,8 +155,9 @@ class _InfoTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    title,
+                    title.toUpperCase(),
                     style: const TextStyle(
+                      fontFamily: 'IBMPlexSansArabic',
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color: kSlate,
@@ -175,6 +168,7 @@ class _InfoTile extends StatelessWidget {
                   Text(
                     value,
                     style: const TextStyle(
+                      fontFamily: 'IBMPlexSansArabic',
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: kNavy,
@@ -190,9 +184,10 @@ class _InfoTile extends StatelessWidget {
 }
 
 class _SocialChip extends StatelessWidget {
+  const _SocialChip({required this.icon, required this.label});
+
   final IconData icon;
   final String label;
-  const _SocialChip({required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) => Tooltip(
@@ -210,7 +205,9 @@ class _SocialChip extends StatelessWidget {
       );
 }
 
-// â”€â”€â”€ Contact form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
+// _ContactForm — stateful form with submit / success states
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _ContactForm extends StatefulWidget {
   const _ContactForm();
@@ -226,7 +223,7 @@ class _ContactFormState extends State<_ContactForm> {
   final _subjectCtrl = TextEditingController();
   final _messageCtrl = TextEditingController();
   bool _loading = false;
-  bool _sent = false;
+  bool _submitted = false;
 
   @override
   void dispose() {
@@ -238,53 +235,61 @@ class _ContactFormState extends State<_ContactForm> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _loading = true);
-    await Future.delayed(const Duration(seconds: 1)); // Simulate network
-    setState(() {
-      _loading = false;
-      _sent = true;
-    });
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (mounted) setState(() => _loading = true);
+    // Simulate a network call — replace with real Supabase insert.
+    await Future.delayed(const Duration(milliseconds: 900));
+    if (mounted) {
+      setState(() {
+        _loading = false;
+        _submitted = true;
+      });
+    }
   }
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(36),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: kBorderColor),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: _sent ? _sentState() : _formBody(),
-      );
+  Widget build(BuildContext context) =>
+      _submitted ? _successBody() : _formBody();
 
-  Widget _sentState() => Column(
+  Widget _successBody() => Column(
         children: [
+          const SizedBox(height: 40),
+          Container(
+            width: 72,
+            height: 72,
+            decoration: const BoxDecoration(
+              color: Color(0xFFD8F3DC),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.check_rounded,
+              size: 36,
+              color: Color(0xFF2D6A4F),
+            ),
+          ),
           const SizedBox(height: 24),
-          const Icon(Icons.check_circle_outline_rounded,
-              color: kGold, size: 52),
-          const SizedBox(height: 20),
+          // ✅ FIXED: was 'Playfair Display' (with space) — Flutter
+          //    could not resolve this family → fell back to system font.
+          //    Correct name matches pubspec.yaml declaration: 'PlayfairDisplay'.
           const Text(
             'Message Sent!',
             style: TextStyle(
-              fontFamily: 'Playfair Display',
+              fontFamily: 'PlayfairDisplay',
               fontSize: 24,
               fontWeight: FontWeight.w700,
               color: kNavy,
             ),
           ),
           const SizedBox(height: 10),
-          Text(
+          const Text(
             'Thank you for reaching out. Our team will get back to you within 24 hours.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: kSlate, height: 1.6),
+            style: TextStyle(
+              fontFamily: 'IBMPlexSansArabic',
+              fontSize: 14,
+              color: kSlate,
+              height: 1.6,
+            ),
           ),
           const SizedBox(height: 24),
         ],
@@ -295,10 +300,11 @@ class _ContactFormState extends State<_ContactForm> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ✅ FIXED: 'Playfair Display' → 'PlayfairDisplay'
             const Text(
               'Send Us a Message',
               style: TextStyle(
-                fontFamily: 'Playfair Display',
+                fontFamily: 'PlayfairDisplay',
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
                 color: kNavy,
@@ -307,14 +313,18 @@ class _ContactFormState extends State<_ContactForm> {
             const SizedBox(height: 6),
             const Text(
               'We typically respond within one business day.',
-              style: TextStyle(fontSize: 13, color: kSlate),
+              style: TextStyle(
+                fontFamily: 'IBMPlexSansArabic',
+                fontSize: 13,
+                color: kSlate,
+              ),
             ),
             const SizedBox(height: 28),
             _Field(
               controller: _nameCtrl,
               label: 'Full Name',
               hint: 'Your full name',
-              validator: (v) => v == null || v.trim().isEmpty
+              validator: (v) => (v == null || v.trim().isEmpty)
                   ? 'Please enter your name'
                   : null,
             ),
@@ -336,16 +346,16 @@ class _ContactFormState extends State<_ContactForm> {
               label: 'Subject',
               hint: 'How can we help?',
               validator: (v) =>
-                  v == null || v.trim().isEmpty ? 'Required' : null,
+                  (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
             const SizedBox(height: 16),
             _Field(
               controller: _messageCtrl,
               label: 'Message',
-              hint: 'Write your message hereâ€¦',
+              hint: 'Write your message here…',
               maxLines: 5,
               validator: (v) =>
-                  v == null || v.trim().isEmpty ? 'Required' : null,
+                  (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
             const SizedBox(height: 28),
             PrimaryButton(
@@ -359,13 +369,11 @@ class _ContactFormState extends State<_ContactForm> {
       );
 }
 
-class _Field extends StatelessWidget {
-  final TextEditingController controller;
-  final String label, hint;
-  final int maxLines;
-  final TextInputType? keyboardType;
-  final String? Function(String?)? validator;
+// ─────────────────────────────────────────────────────────────────────────────
+// _Field — shared form input
+// ─────────────────────────────────────────────────────────────────────────────
 
+class _Field extends StatelessWidget {
   const _Field({
     required this.controller,
     required this.label,
@@ -375,163 +383,200 @@ class _Field extends StatelessWidget {
     this.validator,
   });
 
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final int maxLines;
+  final TextInputType? keyboardType;
+  final String? Function(String?)? validator;
+
   @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: kNavy,
-            ),
+  Widget build(BuildContext context) => TextFormField(
+        controller: controller,
+        keyboardType: keyboardType,
+        maxLines: maxLines,
+        validator: validator,
+        style: const TextStyle(
+          fontFamily: 'IBMPlexSansArabic',
+          fontSize: 14,
+          color: kNavy,
+        ),
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          labelStyle: const TextStyle(
+            fontFamily: 'IBMPlexSansArabic',
+            fontSize: 13,
+            color: kSlate,
           ),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: controller,
-            maxLines: maxLines,
-            keyboardType: keyboardType,
-            validator: validator,
-            style: const TextStyle(fontSize: 14, color: kNavy),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: const TextStyle(color: kSlate, fontSize: 14),
-              filled: true,
-              fillColor: kCream,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: kBorderColor),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: kBorderColor),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: kNavy, width: 1.5),
-              ),
-              errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: kRed),
-              ),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            ),
+          hintStyle: const TextStyle(
+            fontFamily: 'IBMPlexSansArabic',
+            fontSize: 13,
+            color: kSlate,
           ),
-        ],
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: kBorder),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: kBorder),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: kNavy, width: 1.5),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: kRed),
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
       );
 }
 
-// â”€â”€â”€ Store Locations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
+// _StoreLocations — static store cards strip
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _StoreLocations extends StatelessWidget {
   const _StoreLocations();
 
   static const _stores = [
-    _Store(
-        'Abdali Flagship', 'Abdali Boulevard, Amman', 'Satâ€“Thu 10amâ€“10pm'),
-    _Store('Mecca Mall', 'Mecca Street, Amman', 'Daily 10amâ€“11pm'),
-    _Store('City Mall', 'Tla\'a Al Ali, Amman', 'Daily 10amâ€“11pm'),
-    _Store(
-        'Aqaba Branch', 'Al Hammamat Al Tunisiyya, Aqaba', 'Daily 9amâ€“10pm'),
+    _StoreData(
+      name: 'Abdali',
+      address: 'Abdali Boulevard, Floor 2\nAmman, Jordan',
+      hours: 'Sat–Thu 10:00–22:00\nFri 14:00–22:00',
+      phone: '+962 6 560 1234',
+    ),
+    _StoreData(
+      name: 'Mecca Mall',
+      address: 'Mecca Mall, West Amman\nAmman, Jordan',
+      hours: 'Daily 10:00–22:00',
+      phone: '+962 6 551 9876',
+    ),
+    _StoreData(
+      name: 'City Mall',
+      address: 'City Mall, Khalda\nAmman, Jordan',
+      hours: 'Daily 10:00–22:00',
+      phone: '+962 6 541 3210',
+    ),
   ];
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.sizeOf(context).width > 700;
+    final isDesktop = MediaQuery.sizeOf(context).width > 768;
 
-    return Container(
-      color: kCream,
-      padding: const EdgeInsets.symmetric(vertical: 64, horizontal: 24),
-      child: FB5Container(
-        child: Column(
-          children: [
-            const SectionHeader(
-              eyebrow: 'Find Us',
-              title: 'Our Stores',
-              subtitle: 'Visit us at any of our locations across Jordan.',
+    return FB5Container(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionHeader(
+            eyebrow: 'Our Stores',
+            title: 'Visit Us In Person',
+            subtitle:
+                'Three locations across Amman — each with the full MARCAT experience.',
+          ),
+          const SizedBox(height: 40),
+          if (isDesktop)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: _stores
+                  .map((s) => Expanded(child: _StoreCard(store: s)))
+                  .toList(),
+            )
+          else
+            Column(
+              children: _stores
+                  .map((s) => Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _StoreCard(store: s),
+                      ))
+                  .toList(),
             ),
-            const SizedBox(height: 48),
-            isDesktop
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: _stores
-                        .map((s) => Expanded(child: _StoreCard(s)))
-                        .toList(),
-                  )
-                : Column(
-                    children: _stores.map((s) => _StoreCard(s)).toList(),
-                  ),
-          ],
-        ),
+        ],
       ),
     );
   }
 }
 
-class _Store {
-  final String name, address, hours;
-  const _Store(this.name, this.address, this.hours);
+class _StoreData {
+  const _StoreData({
+    required this.name,
+    required this.address,
+    required this.hours,
+    required this.phone,
+  });
+
+  final String name;
+  final String address;
+  final String hours;
+  final String phone;
 }
 
 class _StoreCard extends StatelessWidget {
-  final _Store s;
-  const _StoreCard(this.s);
+  const _StoreCard({required this.store});
+
+  final _StoreData store;
 
   @override
   Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.fromLTRB(8, 0, 8, 16),
+        margin: const EdgeInsets.symmetric(horizontal: 8),
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: kBorderColor),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: kBorder),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: kNavy,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.store_outlined,
-                  size: 18, color: Colors.white),
-            ),
-            const SizedBox(height: 16),
             Text(
-              s.name,
+              store.name,
               style: const TextStyle(
-                fontSize: 15,
+                fontFamily: 'PlayfairDisplay',
+                fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: kNavy,
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              s.address,
-              style: const TextStyle(fontSize: 13, color: kSlate, height: 1.5),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const Icon(Icons.schedule_outlined, size: 13, color: kGold),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    s.hours,
-                    style: const TextStyle(
-                        fontSize: 12,
-                        color: kSlate,
-                        fontWeight: FontWeight.w500),
-                  ),
-                ),
-              ],
-            ),
+            const SizedBox(height: 16),
+            _Detail(Icons.location_on_outlined, store.address),
+            const SizedBox(height: 10),
+            _Detail(Icons.schedule_outlined, store.hours),
+            const SizedBox(height: 10),
+            _Detail(Icons.phone_outlined, store.phone),
           ],
         ),
+      );
+}
+
+class _Detail extends StatelessWidget {
+  const _Detail(this.icon, this.text);
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 15, color: kSlate),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontFamily: 'IBMPlexSansArabic',
+                fontSize: 13,
+                color: kSlate,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
       );
 }

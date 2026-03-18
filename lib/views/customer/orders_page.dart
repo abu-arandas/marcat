@@ -14,6 +14,7 @@ import 'package:marcat/models/enums.dart';
 import 'package:marcat/models/sale_model.dart';
 
 import 'scaffold/app_scaffold.dart';
+import 'shared/brand.dart'; // ✅ single source of colour constants
 import 'shared/empty_state.dart';
 import 'shared/section_header.dart';
 
@@ -73,12 +74,17 @@ class _OrdersPageState extends State<OrdersPage> {
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
-      Get.snackbar('Error', e.toString(),
-          backgroundColor: AppColors.marcatNavy, colorText: Colors.white);
+      Get.snackbar(
+        'Error',
+        e.toString(),
+        backgroundColor: AppColors.marcatNavy,
+        colorText: Colors.white,
+      );
     }
   }
 
   void _setFilter(String? status) {
+    if (_filterStatus == status) return;
     setState(() => _filterStatus = status);
     _fetchOrders(reset: true);
   }
@@ -87,156 +93,168 @@ class _OrdersPageState extends State<OrdersPage> {
   Widget build(BuildContext context) => CustomerScaffold(
         page: 'My Orders',
         pageImage:
-            'https://images.unsplash.com/photo-1601598851547-4302969d0614?w=1600&q=80',
-        body: _OrdersBody(
-          orders: _orders,
-          isLoading: _isLoading,
-          hasMore: _hasMore,
-          filterStatus: _filterStatus,
-          onLoadMore: () => _fetchOrders(),
-          onSetFilter: _setFilter,
-          onRefresh: () => _fetchOrders(reset: true),
+            'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1600&q=80',
+        body: FB5Container(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 40),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SectionHeader(
+                  eyebrow: 'Account',
+                  title: 'Order History',
+                  subtitle: 'Track and manage your purchases.',
+                ),
+                const SizedBox(height: 28),
+                _FilterChips(
+                  current: _filterStatus,
+                  onChanged: _setFilter,
+                ),
+                const SizedBox(height: 24),
+                _OrderList(
+                  orders: _orders,
+                  isLoading: _isLoading,
+                  hasMore: _hasMore,
+                  onLoadMore: () => _fetchOrders(),
+                ),
+              ],
+            ),
+          ),
         ),
       );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _OrdersBody
+// _FilterChips
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _OrdersBody extends StatelessWidget {
-  const _OrdersBody({
+class _FilterChips extends StatelessWidget {
+  const _FilterChips({required this.current, required this.onChanged});
+
+  final String? current;
+  final ValueChanged<String?> onChanged;
+
+  static const _options = <String, String?>{
+    'All': null,
+    'Pending': 'pending',
+    'Paid': 'paid',
+    'Shipped': 'shipped',
+    'Delivered': 'delivered',
+    'Cancelled': 'cancelled',
+  };
+
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: _options.entries.map((e) {
+            final active = current == e.value;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GestureDetector(
+                onTap: () => onChanged(e.value),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: active ? kNavy : Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: active ? kNavy : kBorder,
+                    ),
+                  ),
+                  child: Text(
+                    e.key,
+                    style: TextStyle(
+                      fontFamily: 'IBMPlexSansArabic',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: active ? Colors.white : kSlate,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _OrderList
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _OrderList extends StatelessWidget {
+  const _OrderList({
     required this.orders,
     required this.isLoading,
     required this.hasMore,
-    required this.filterStatus,
     required this.onLoadMore,
-    required this.onSetFilter,
-    required this.onRefresh,
   });
 
   final List<SaleModel> orders;
   final bool isLoading;
   final bool hasMore;
-  final String? filterStatus;
   final VoidCallback onLoadMore;
-  final void Function(String?) onSetFilter;
-  final VoidCallback onRefresh;
-
-  static const _statuses = [
-    null, 'pending', 'paid', 'shipped', 'delivered', 'cancelled',
-  ];
 
   @override
-  Widget build(BuildContext context) => FB5Container(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 40),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SectionHeader(
-                eyebrow: 'Account',
-                title: 'My Orders',
-                subtitle: 'Track and manage your purchases.',
-              ),
-              const SizedBox(height: 24),
-
-              // ── Status filter chips ────────────────────────────────────
-              SizedBox(
-                height: 40,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: _statuses.map((s) {
-                    final isActive = filterStatus == s;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: Text(
-                          s == null ? 'All' : _capitalize(s),
-                          style: TextStyle(
-                            fontFamily: 'IBMPlexSansArabic',
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: isActive
-                                ? Colors.white
-                                : AppColors.marcatNavy,
-                          ),
-                        ),
-                        selected: isActive,
-                        onSelected: (_) => onSetFilter(s),
-                        selectedColor: AppColors.marcatNavy,
-                        backgroundColor: AppColors.marcatCream,
-                        side: const BorderSide(color: AppColors.borderLight),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-
-              const SizedBox(height: 32),
-
-              // ── Orders list ────────────────────────────────────────────
-              if (isLoading && orders.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 60),
-                  child: Center(
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: AppColors.marcatGold),
-                  ),
-                )
-              else if (orders.isEmpty)
-                EmptyState(
-                  icon: Icons.receipt_long_outlined,
-                  title: 'No Orders Yet',
-                  subtitle: "You haven't placed any orders yet.\nStart shopping to see them here.",
-                  actionLabel: 'Shop Now',
-                  onAction: () => Get.toNamed(AppRoutes.shop),
-                )
-              else ...[
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: orders.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 16),
-                  itemBuilder: (_, i) => _OrderCard(order: orders[i]),
-                ),
-                if (hasMore) ...[
-                  const SizedBox(height: 32),
-                  Center(
-                    child: isLoading
-                        ? const CircularProgressIndicator(
-                            strokeWidth: 2, color: AppColors.marcatGold)
-                        : OutlinedButton(
-                            onPressed: onLoadMore,
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(
-                                  color: AppColors.marcatNavy),
-                              foregroundColor: AppColors.marcatNavy,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 32, vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: const Text(
-                              'Load More',
-                              style: TextStyle(
-                                fontFamily: 'IBMPlexSansArabic',
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                  ),
-                ],
-              ],
-            ],
+  Widget build(BuildContext context) {
+    if (isLoading && orders.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 60),
+        child: Center(
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: AppColors.marcatGold,
           ),
         ),
       );
+    }
 
-  String _capitalize(String s) =>
-      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+    if (orders.isEmpty) {
+      return const EmptyState(
+        icon: Icons.receipt_long_outlined,
+        title: 'No Orders Yet',
+        subtitle: 'When you place orders they will appear here.',
+      );
+    }
+
+    return Column(
+      children: [
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: orders.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (_, i) => _OrderCard(order: orders[i]),
+        ),
+        if (hasMore) ...[
+          const SizedBox(height: 24),
+          Center(
+            child: isLoading
+                ? const CircularProgressIndicator(strokeWidth: 2)
+                : OutlinedButton(
+                    onPressed: onLoadMore,
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: kBorder),
+                      foregroundColor: kNavy,
+                    ),
+                    child: const Text(
+                      'Load More',
+                      style: TextStyle(
+                        fontFamily: 'IBMPlexSansArabic',
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+          ),
+        ],
+      ],
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -256,37 +274,45 @@ class _OrderCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.borderLight),
+            border: Border.all(color: kBorder),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ── Header ─────────────────────────────────────────────────
               Row(
                 children: [
                   Expanded(
                     child: Text(
                       '#${order.referenceNumber}',
-                      style: AppTextStyles.referenceText,
+                      style: AppTextStyles.titleSmall,
                     ),
                   ),
                   _StatusBadge(status: order.status),
                 ],
               ),
-              const SizedBox(height: 10),
-              const Divider(color: AppColors.borderLight, height: 1),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
+
+              // ── Meta ───────────────────────────────────────────────────
               Row(
                 children: [
-                  _InfoItem(
-                    icon: Icons.calendar_today_outlined,
-                    label: _formatDate(order.createdAt),
+                  Icon(
+                    Icons.calendar_today_outlined,
+                    size: 13,
+                    color: kSlate,
                   ),
-                  const SizedBox(width: 20),
-                  _InfoItem(
-                    icon: Icons.storefront_outlined,
-                    label: order.channel.dbValue.toUpperCase(),
+                  const SizedBox(width: 4),
+                  Text(
+                    _formatDate(order.createdAt),
+                    style: AppTextStyles.bodySmall.copyWith(color: kSlate),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 16),
+                  Icon(
+                    Icons.receipt_outlined,
+                    size: 13,
+                    color: kSlate,
+                  ),
+                  const SizedBox(width: 4),
                   Text(
                     order.grandTotal.toJOD(),
                     style: AppTextStyles.priceMedium,
@@ -294,6 +320,11 @@ class _OrderCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
+
+              // ── Items preview ──────────────────────────────────────────
+              const SizedBox(height: 12),
+
+              // ── View details CTA ───────────────────────────────────────
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -301,14 +332,17 @@ class _OrderCard extends StatelessWidget {
                     'View Details',
                     style: TextStyle(
                       fontFamily: 'IBMPlexSansArabic',
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.marcatGold,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: kNavy,
                     ),
                   ),
                   const SizedBox(width: 4),
-                  const Icon(Icons.arrow_forward_rounded,
-                      size: 14, color: AppColors.marcatGold),
+                  const Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 14,
+                    color: kNavy,
+                  ),
                 ],
               ),
             ],
@@ -316,38 +350,9 @@ class _OrderCard extends StatelessWidget {
         ),
       );
 
-  String _formatDate(DateTime dt) {
-    final local = dt.toLocal();
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    return '${local.day} ${months[local.month - 1]} ${local.year}';
-  }
-}
-
-class _InfoItem extends StatelessWidget {
-  const _InfoItem({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: AppColors.marcatSlate),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontFamily: 'IBMPlexSansArabic',
-              fontSize: 12,
-              color: AppColors.marcatSlate,
-            ),
-          ),
-        ],
-      );
+  String _formatDate(DateTime dt) => '${dt.day.toString().padLeft(2, '0')}/'
+      '${dt.month.toString().padLeft(2, '0')}/'
+      '${dt.year}';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -359,51 +364,45 @@ class _StatusBadge extends StatelessWidget {
 
   final SaleStatus status;
 
-  @override
-  Widget build(BuildContext context) {
-    final (bg, fg, label) = switch (status) {
-      SaleStatus.pending => (
-          AppColors.statusAmberLight,
-          AppColors.statusAmber,
-          'Pending'
-        ),
-      SaleStatus.paid => (
-          AppColors.statusBlueLight,
-          AppColors.statusBlue,
-          'Paid'
-        ),
-      SaleStatus.shipped => (
-          AppColors.statusBlueLight,
-          AppColors.statusBlue,
-          'Shipped'
-        ),
-      SaleStatus.delivered => (
-          AppColors.statusGreenLight,
-          AppColors.statusGreen,
-          'Delivered'
-        ),
-      SaleStatus.cancelled => (
-          AppColors.statusRedLight,
-          AppColors.statusRed,
-          'Cancelled'
-        ),
-    };
+  Color get _bg => switch (status) {
+        SaleStatus.pending => AppColors.statusAmberLight,
+        SaleStatus.paid => AppColors.statusBlueLight,
+        SaleStatus.shipped => AppColors.statusBlueLight,
+        SaleStatus.delivered => AppColors.statusGreenLight,
+        SaleStatus.cancelled => AppColors.statusRedLight,
+      };
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontFamily: 'IBMPlexSansArabic',
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: fg,
+  Color get _fg => switch (status) {
+        SaleStatus.pending => AppColors.statusAmber,
+        SaleStatus.paid => AppColors.statusBlue,
+        SaleStatus.shipped => AppColors.statusBlue,
+        SaleStatus.delivered => AppColors.statusGreen,
+        SaleStatus.cancelled => AppColors.statusRed,
+      };
+
+  String get _label => switch (status) {
+        SaleStatus.pending => 'Pending',
+        SaleStatus.paid => 'Paid',
+        SaleStatus.shipped => 'Shipped',
+        SaleStatus.delivered => 'Delivered',
+        SaleStatus.cancelled => 'Cancelled',
+      };
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: _bg,
+          borderRadius: BorderRadius.circular(20),
         ),
-      ),
-    );
-  }
+        child: Text(
+          _label,
+          style: TextStyle(
+            fontFamily: 'IBMPlexSansArabic',
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: _fg,
+          ),
+        ),
+      );
 }

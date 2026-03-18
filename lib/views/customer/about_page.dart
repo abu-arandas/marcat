@@ -7,7 +7,7 @@ import 'package:get/get.dart';
 
 import 'scaffold/app_scaffold.dart';
 import 'shared/brand.dart';
-import 'shared/marcat_buttons.dart';
+import 'shared/buttons.dart';
 import 'shared/section_header.dart';
 import 'package:marcat/core/router/app_router.dart';
 

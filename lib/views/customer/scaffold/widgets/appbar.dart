@@ -6,67 +6,58 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bootstrap5/flutter_bootstrap5.dart';
 import 'package:get/get.dart';
 
-import '../../../../controllers/auth_controller.dart';
-import '../../../../controllers/cart_controller.dart';
-import '../../../../controllers/product_controller.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/router/app_router.dart';
-import '../../../../models/user_model.dart';
+import 'package:marcat/controllers/auth_controller.dart';
+import 'package:marcat/controllers/cart_controller.dart';
+import 'package:marcat/controllers/product_controller.dart';
+import 'package:marcat/core/constants/app_colors.dart';
+import 'package:marcat/core/router/app_router.dart';
+import 'package:marcat/models/user_model.dart';
+
 import '../../shared/search_sheet.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CustomerAppBar
 // ─────────────────────────────────────────────────────────────────────────────
 
-class CustomerAppBar extends StatefulWidget implements PreferredSizeWidget {
+/// Frosted-glass sticky app bar used by [CustomerScaffold].
+///
+/// - Transparent on the home hero, opaque (frosted) when scrolled.
+/// - Shows the category strip on tablet & desktop.
+/// - Responsive: collapses nav links to hamburger on mobile.
+class CustomerAppBar extends StatelessWidget implements PreferredSizeWidget {
   const CustomerAppBar({
     super.key,
     required this.pageName,
     required this.scrolled,
-    this.hasFilterDrawer = false,
+    required this.hasFilterDrawer,
   });
 
   final String pageName;
   final bool scrolled;
-
-  /// When true the filter/sort icon is shown on mobile.
   final bool hasFilterDrawer;
 
-  @override
-  Size get preferredSize {
-    final view = WidgetsBinding.instance.platformDispatcher.views.first;
-    final logicalWidth = view.physicalSize.width / view.devicePixelRatio;
-    // Category bar is shown at tablet+ widths.
-    final hasCategoryBar = logicalWidth > 768;
-    return Size.fromHeight(65 + (hasCategoryBar ? 48 : 0));
-  }
+  bool get _isTransparent => !scrolled;
 
   @override
-  State<CustomerAppBar> createState() => _CustomerAppBarState();
-}
-
-class _CustomerAppBarState extends State<CustomerAppBar> {
-  bool get _isHome => widget.pageName.toLowerCase() == 'home';
-  bool get _isTransparent => _isHome && !widget.scrolled;
-
-  Color get _fg => _isTransparent ? Colors.white : AppColors.marcatNavy;
-
-  Color get _divider => _isTransparent
-      ? Colors.white.withOpacity(0.15)
-      : AppColors.borderStrong;
+  Size get preferredSize => const Size.fromHeight(105);
 
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final isDesktop = width > 1024;
-    final isTablet = width > 768 && width <= 1024;
+    final isTablet = width > 600;
+
+    final Color fg = _isTransparent ? Colors.white : AppColors.marcatNavy;
+    // withAlpha(26) ≈ 10 % opacity for the border tint
+    final Color divider =
+        _isTransparent ? Colors.white.withAlpha(26) : AppColors.borderLight;
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      decoration: BoxDecoration(
-        color:
-            _isTransparent ? Colors.transparent : Colors.white.withOpacity(0.96),
-        border: Border(bottom: BorderSide(color: _divider, width: 1)),
+      duration: const Duration(milliseconds: 280),
+      // withAlpha(245) ≈ 96 % opacity
+      color: _isTransparent ? Colors.transparent : Colors.white.withAlpha(245),
+      foregroundDecoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: divider, width: 1)),
       ),
       child: ClipRRect(
         child: BackdropFilter(
@@ -104,19 +95,22 @@ class _CustomerAppBarState extends State<CustomerAppBar> {
 
                       // Desktop nav links
                       if (isDesktop) ...[
-                        _NavLink(label: 'Shop', route: AppRoutes.shop, fg: _fg),
-                        _NavLink(label: 'About', route: AppRoutes.about, fg: _fg),
+                        _NavLink(label: 'Shop', route: AppRoutes.shop, fg: fg),
                         _NavLink(
-                            label: 'Contact', route: AppRoutes.contact, fg: _fg),
+                            label: 'About', route: AppRoutes.about, fg: fg),
+                        _NavLink(
+                            label: 'Contact',
+                            route: AppRoutes.contact,
+                            fg: fg),
                         const SizedBox(width: 16),
                       ],
 
-                      // Mobile filter icon (shown only when page has a filter drawer)
-                      if (!isDesktop && widget.hasFilterDrawer)
+                      // Mobile filter icon (only when page has a filter drawer)
+                      if (!isDesktop && hasFilterDrawer)
                         _iconButton(
                           icon: Icons.tune_rounded,
                           tooltip: 'Filter',
-                          color: _fg,
+                          color: fg,
                           onPressed: () => Scaffold.of(context).openDrawer(),
                         ),
 
@@ -124,18 +118,18 @@ class _CustomerAppBarState extends State<CustomerAppBar> {
                       _iconButton(
                         icon: Icons.search_rounded,
                         tooltip: 'Search',
-                        color: _fg,
+                        color: fg,
                         onPressed: () => SearchSheet.show(context),
                       ),
 
                       // Cart with badge
                       GetBuilder<CartController>(
                         builder: (cart) {
-                          final count = cart.items.fold<int>(
-                              0, (sum, item) => sum + item.quantity);
+                          final count = cart.items
+                              .fold<int>(0, (sum, item) => sum + item.quantity);
                           return _CartIcon(
                             count: count > 0 ? '$count' : null,
-                            color: _fg,
+                            color: fg,
                             onPressed: () => Get.toNamed(AppRoutes.cart),
                           );
                         },
@@ -147,8 +141,11 @@ class _CustomerAppBarState extends State<CustomerAppBar> {
                         builder: (ctrl) {
                           final user = ctrl.state.value.user;
                           return user != null
-                              ? _UserAvatar(user: user, fg: _fg)
-                              : _SignInButton(isDesktop: isDesktop, color: _fg);
+                              ? _UserAvatar(user: user, fg: fg)
+                              : _SignInButton(
+                                  isDesktop: isDesktop,
+                                  color: fg,
+                                );
                         },
                       ),
 
@@ -158,7 +155,7 @@ class _CustomerAppBarState extends State<CustomerAppBar> {
                         _iconButton(
                           icon: Icons.menu_rounded,
                           tooltip: 'Menu',
-                          color: _fg,
+                          color: fg,
                           onPressed: () => Scaffold.of(context).openEndDrawer(),
                         ),
                       ],
@@ -179,9 +176,10 @@ class _CustomerAppBarState extends State<CustomerAppBar> {
                       decoration: BoxDecoration(
                         color: _isTransparent
                             ? Colors.transparent
-                            : AppColors.marcatCream.withOpacity(0.9),
+                            // withAlpha(230) ≈ 90 % opacity
+                            : AppColors.marcatCream.withAlpha(230),
                         border: Border(
-                          bottom: BorderSide(color: _divider, width: 1),
+                          bottom: BorderSide(color: divider, width: 1),
                         ),
                       ),
                       child: SingleChildScrollView(
@@ -201,8 +199,11 @@ class _CustomerAppBarState extends State<CustomerAppBar> {
                                     fontFamily: 'IBMPlexSansArabic',
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
-                                    color: _fg.withOpacity(0.8),
-                                    letterSpacing: 1.5,
+                                    letterSpacing: 1,
+                                    // withAlpha(204) ≈ 80 % opacity
+                                    color: _isTransparent
+                                        ? Colors.white.withAlpha(204)
+                                        : AppColors.marcatNavy,
                                   ),
                                 ),
                               ),
@@ -221,7 +222,9 @@ class _CustomerAppBarState extends State<CustomerAppBar> {
   }
 }
 
-// ── Private helpers ───────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Private helpers
+// ─────────────────────────────────────────────────────────────────────────────
 
 Widget _iconButton({
   required IconData icon,
@@ -268,15 +271,14 @@ class _NavLinkState extends State<_NavLink> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             child: AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 150),
+              duration: const Duration(milliseconds: 160),
               style: TextStyle(
                 fontFamily: 'IBMPlexSansArabic',
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                letterSpacing: 1.2,
-                color: _hovered
-                    ? AppColors.marcatGold
-                    : widget.fg.withOpacity(0.9),
+                color:
+                    _hovered ? AppColors.marcatGold : widget.fg.withAlpha(230),
+                letterSpacing: 0.5,
               ),
               child: Text(widget.label.toUpperCase()),
             ),
@@ -317,8 +319,9 @@ class _CartIcon extends StatelessWidget {
               child: IgnorePointer(
                 child: Container(
                   padding: const EdgeInsets.all(3),
-                  constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                  decoration: BoxDecoration(
+                  constraints:
+                      const BoxConstraints(minWidth: 16, minHeight: 16),
+                  decoration: const BoxDecoration(
                     color: AppColors.marcatGold,
                     shape: BoxShape.circle,
                   ),
@@ -361,10 +364,10 @@ class _UserAvatar extends StatelessWidget {
           message: 'Profile',
           child: CircleAvatar(
             radius: 17,
-            backgroundColor: AppColors.marcatGold.withOpacity(0.2),
-            backgroundImage: user.avatarUrl != null
-                ? NetworkImage(user.avatarUrl!)
-                : null,
+            // withAlpha(51) ≈ 20 % opacity
+            backgroundColor: AppColors.marcatGold.withAlpha(51),
+            backgroundImage:
+                user.avatarUrl != null ? NetworkImage(user.avatarUrl!) : null,
             child: user.avatarUrl == null
                 ? Text(
                     _initials,
@@ -384,34 +387,59 @@ class _UserAvatar extends StatelessWidget {
 // _SignInButton
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _SignInButton extends StatelessWidget {
+class _SignInButton extends StatefulWidget {
   const _SignInButton({required this.isDesktop, required this.color});
 
   final bool isDesktop;
   final Color color;
 
   @override
+  State<_SignInButton> createState() => _SignInButtonState();
+}
+
+class _SignInButtonState extends State<_SignInButton> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    if (isDesktop) {
-      return TextButton(
+    if (!widget.isDesktop) {
+      return IconButton(
+        icon: Icon(Icons.person_outline_rounded, color: widget.color),
+        tooltip: 'Sign In',
         onPressed: () => Get.toNamed(AppRoutes.login),
-        child: Text(
-          'Sign In',
-          style: TextStyle(
-            fontFamily: 'IBMPlexSansArabic',
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
-            color: color,
-          ),
-        ),
+        splashRadius: 20,
       );
     }
-    return _iconButton(
-      icon: Icons.person_outline_rounded,
-      tooltip: 'Sign In',
-      color: color,
-      onPressed: () => Get.toNamed(AppRoutes.login),
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: () => Get.toNamed(AppRoutes.login),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            color: _hovered ? AppColors.marcatGold : Colors.transparent,
+            border: Border.all(
+              color:
+                  _hovered ? AppColors.marcatGold : widget.color.withAlpha(230),
+              width: 1,
+            ),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            'Sign In',
+            style: TextStyle(
+              fontFamily: 'IBMPlexSansArabic',
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: _hovered ? AppColors.marcatNavy : widget.color,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

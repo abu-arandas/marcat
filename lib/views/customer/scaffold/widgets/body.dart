@@ -12,7 +12,7 @@ import 'package:marcat/core/router/app_router.dart';
 // ClientBody
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Body content wrapper for customer-facing pages.
+/// Body wrapper for customer-facing pages.
 /// Renders an optional hero banner, the page content, and the site footer.
 class ClientBody extends StatelessWidget {
   const ClientBody({
@@ -75,8 +75,10 @@ class _PageBanner extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withOpacity(0.25),
-                    Colors.black.withOpacity(0.55),
+                    // withAlpha(64) ≈ 25 % opacity
+                    Colors.black.withAlpha(64),
+                    // withAlpha(140) ≈ 55 % opacity
+                    Colors.black.withAlpha(140),
                   ],
                 ),
               ),
@@ -115,7 +117,7 @@ class _SiteFooter extends StatelessWidget {
               children: [
                 FB5Row(
                   children: [
-                    // ── Brand ──────────────────────────────────────────────
+                    // ── Brand column ──────────────────────────────────────
                     FB5Col(
                       classNames: 'col-lg-3 col-md-6 col-12',
                       child: _FooterColumn(
@@ -134,7 +136,7 @@ class _SiteFooter extends StatelessWidget {
                       ),
                     ),
 
-                    // ── Shop ───────────────────────────────────────────────
+                    // ── Shop column ────────────────────────────────────────
                     FB5Col(
                       classNames: 'col-lg-3 col-md-6 col-12',
                       child: _FooterColumn(
@@ -156,7 +158,7 @@ class _SiteFooter extends StatelessWidget {
                       ),
                     ),
 
-                    // ── Account ────────────────────────────────────────────
+                    // ── Account column ─────────────────────────────────────
                     FB5Col(
                       classNames: 'col-lg-3 col-md-6 col-12',
                       child: _FooterColumn(
@@ -178,39 +180,40 @@ class _SiteFooter extends StatelessWidget {
                       ),
                     ),
 
-                    // ── Contact ────────────────────────────────────────────
+                    // ── Help column ────────────────────────────────────────
                     FB5Col(
                       classNames: 'col-lg-3 col-md-6 col-12',
                       child: _FooterColumn(
-                        heading: 'Contact',
+                        heading: 'Help',
                         links: [
                           _FooterLink(
-                            label: '+962 79 156 8798',
-                            onTap: null,
+                            label: 'Size Guide',
+                            onTap: () => Get.toNamed(AppRoutes.sizeGuide),
                           ),
                           _FooterLink(
-                            label: 'hello@marcat.jo',
-                            onTap: null,
-                          ),
-                          _FooterLink(
-                            label: 'Abdali Blvd, Amman',
-                            onTap: null,
+                            label: 'Returns & Exchanges',
+                            onTap: () => Get.toNamed(AppRoutes.returns),
                           ),
                         ],
                       ),
                     ),
                   ],
                 ),
+
                 const SizedBox(height: 40),
-                const Divider(color: Colors.white12),
-                const SizedBox(height: 20),
-                const Text(
-                  '© 2024 MARCAT. All rights reserved.',
+                const Divider(color: Color(0xFF2C2C3E), height: 1),
+                const SizedBox(height: 24),
+
+                // ── Copyright ─────────────────────────────────────────────
+                Text(
+                  '© ${DateTime.now().year} MARCAT. All rights reserved.',
                   style: TextStyle(
                     fontFamily: 'IBMPlexSansArabic',
                     fontSize: 12,
-                    color: Colors.white38,
+                    // withAlpha(102) ≈ 40 % opacity
+                    color: Colors.white.withAlpha(102),
                   ),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),
@@ -220,7 +223,7 @@ class _SiteFooter extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _FooterColumn
+// _FooterColumn & _FooterLink
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _FooterColumn extends StatelessWidget {
@@ -240,28 +243,28 @@ class _FooterColumn extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (isLogo)
-              Text(
-                heading,
-                style: const TextStyle(
-                  fontFamily: 'PlayfairDisplay',
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.marcatGold,
-                  letterSpacing: 2,
-                ),
-              )
-            else
-              Text(
-                heading.toUpperCase(),
-                style: const TextStyle(
-                  fontFamily: 'IBMPlexSansArabic',
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white60,
-                  letterSpacing: 2,
-                ),
-              ),
+            // Heading
+            isLogo
+                ? Text(
+                    heading,
+                    style: const TextStyle(
+                      fontFamily: 'PlayfairDisplay',
+                      color: AppColors.marcatGold,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 3,
+                    ),
+                  )
+                : Text(
+                    heading.toUpperCase(),
+                    style: const TextStyle(
+                      fontFamily: 'IBMPlexSansArabic',
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.8,
+                    ),
+                  ),
             const SizedBox(height: 16),
             ...links,
           ],
@@ -269,24 +272,38 @@ class _FooterColumn extends StatelessWidget {
       );
 }
 
-class _FooterLink extends StatelessWidget {
+class _FooterLink extends StatefulWidget {
   const _FooterLink({required this.label, required this.onTap});
 
   final String label;
-  final VoidCallback? onTap;
+  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 10),
+  State<_FooterLink> createState() => _FooterLinkState();
+}
+
+class _FooterLinkState extends State<_FooterLink> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
         child: GestureDetector(
-          onTap: onTap,
-          child: Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'IBMPlexSansArabic',
-              fontSize: 14,
-              color: onTap != null ? Colors.white70 : Colors.white38,
-              height: 1.4,
+          onTap: widget.onTap,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 160),
+              style: TextStyle(
+                fontFamily: 'IBMPlexSansArabic',
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                // withAlpha(153) ≈ 60 % opacity
+                color: _hovered ? Colors.white : Colors.white.withAlpha(153),
+              ),
+              child: Text(widget.label),
             ),
           ),
         ),

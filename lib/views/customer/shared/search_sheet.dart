@@ -1,104 +1,78 @@
 // lib/views/customer/shared/search_sheet.dart
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/material.dart' hide SearchController;
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../../../controllers/search_controller.dart';
-import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_text_styles.dart';
-import '../../../core/extensions/currency_extensions.dart';
-import '../../../models/product_model.dart';
+import 'package:marcat/controllers/search_controller.dart';
+import 'package:marcat/core/constants/app_colors.dart';
+import 'package:marcat/core/constants/app_text_styles.dart';
+import 'package:marcat/core/extensions/currency_extensions.dart';
+import 'package:marcat/models/product_model.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SearchSheet
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// Full-height modal bottom sheet for product search.
+///
+/// Shows category chips before typing, then live product results.
 class SearchSheet extends StatelessWidget {
   const SearchSheet({super.key});
 
-  /// Open the search dialog from anywhere.
-  static void show(BuildContext context) => showDialog(
-        context: context,
-        useSafeArea: false,
-        builder: (_) => const SearchSheet(),
-      );
+  static void show(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => const SearchSheet(),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Use Get.find — the controller is already registered as permanent in
-    // InitialBinding. Never pass init: here or GetX will create a duplicate.
     final ctrl = Get.find<MarcatSearchController>();
+    final height = MediaQuery.sizeOf(context).height * 0.9;
 
-    final width = MediaQuery.sizeOf(context).width;
-    final isDesktop = width > 900;
+    return SizedBox(
+      height: height,
+      child: Column(
+        children: [
+          // ── Drag handle ───────────────────────────────────────────────
+          const SizedBox(height: 12),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.borderMedium,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 16),
 
-    return Dialog(
-      insetPadding: EdgeInsets.symmetric(
-        horizontal: isDesktop ? width * 0.15 : 16,
-        vertical: isDesktop ? 60 : 40,
-      ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // ── Header ──────────────────────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                border: Border(
-                  bottom: BorderSide(color: AppColors.borderLight),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Text(
-                    'Search',
-                    style: TextStyle(
-                      fontFamily: 'PlayfairDisplay',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.marcatNavy,
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded),
-                    onPressed: () {
-                      ctrl.clear();
-                      Get.back();
-                    },
-                    color: AppColors.marcatSlate,
-                    tooltip: 'Close',
-                    splashRadius: 18,
-                  ),
-                ],
+          // ── Search field ──────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: _SearchField(ctrl: ctrl),
+          ),
+          const SizedBox(height: 20),
+
+          // ── Results / suggestions ─────────────────────────────────────
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Obx(
+                () => ctrl.query.value.isEmpty
+                    ? _SuggestionsSection(ctrl: ctrl)
+                    : _ResultsSection(ctrl: ctrl),
               ),
             ),
-
-            // ── Search field ─────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-              child: _SearchField(ctrl: ctrl),
-            ),
-
-            // ── Scrollable results body ──────────────────────────────────────
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                child: ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: ctrl.textController,
-                  builder: (_, value, __) => value.text.trim().isEmpty
-                      ? _SuggestionsSection(ctrl: ctrl)
-                      : _ResultsSection(ctrl: ctrl),
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -171,11 +145,15 @@ class _SearchField extends StatelessWidget {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide:
-                const BorderSide(color: AppColors.marcatNavy, width: 1.5),
+            borderSide: const BorderSide(
+              color: AppColors.marcatNavy,
+              width: 1.5,
+            ),
           ),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
         ),
       );
 }
@@ -201,7 +179,9 @@ class _SuggestionsSection extends StatelessWidget {
                     padding: EdgeInsets.symmetric(vertical: 16),
                     child: Center(
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: AppColors.marcatGold),
+                        strokeWidth: 2,
+                        color: AppColors.marcatGold,
+                      ),
                     ),
                   )
                 : ctrl.suggestions.isEmpty
@@ -210,10 +190,12 @@ class _SuggestionsSection extends StatelessWidget {
                         spacing: 8,
                         runSpacing: 8,
                         children: ctrl.suggestions
-                            .map((cat) => _CategoryChip(
-                                  label: cat.name,
-                                  onTap: () => ctrl.submitCategory(cat),
-                                ))
+                            .map(
+                              (cat) => _CategoryChip(
+                                label: cat.name,
+                                onTap: () => ctrl.submitCategory(cat),
+                              ),
+                            )
                             .toList(),
                       ),
           ),
@@ -237,7 +219,9 @@ class _ResultsSection extends StatelessWidget {
             padding: EdgeInsets.symmetric(vertical: 32),
             child: Center(
               child: CircularProgressIndicator(
-                  strokeWidth: 2, color: AppColors.marcatGold),
+                strokeWidth: 2,
+                color: AppColors.marcatGold,
+              ),
             ),
           );
         }
@@ -249,8 +233,11 @@ class _ResultsSection extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.search_off_rounded,
-                      size: 40, color: AppColors.marcatSlate),
+                  const Icon(
+                    Icons.search_off_rounded,
+                    size: 40,
+                    color: AppColors.marcatSlate,
+                  ),
                   const SizedBox(height: 12),
                   Obx(
                     () => Text(
@@ -273,15 +260,19 @@ class _ResultsSection extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Obx(() => _SectionLabel('${ctrl.results.length} RESULTS')),
+            Obx(
+              () => _SectionLabel('${ctrl.results.length} RESULTS'),
+            ),
             const SizedBox(height: 12),
             Obx(
               () => ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: ctrl.results.length,
-                separatorBuilder: (_, __) =>
-                    const Divider(color: AppColors.borderLight, height: 1),
+                separatorBuilder: (_, __) => const Divider(
+                  color: AppColors.borderLight,
+                  height: 1,
+                ),
                 itemBuilder: (_, i) => _ProductTile(
                   product: ctrl.results[i],
                   onTap: () => ctrl.submitProduct(ctrl.results[i]),

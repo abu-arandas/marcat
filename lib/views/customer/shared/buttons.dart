@@ -1,16 +1,13 @@
-// lib/views/customer/shared/marcat_buttons.dart
+// lib/views/customer/shared/buttons.dart
 
 import 'package:flutter/material.dart';
 import 'brand.dart';
 
-/// Solid navy button â€” primary CTA.
-class PrimaryButton extends StatelessWidget {
-  final String label;
-  final VoidCallback? onPressed;
-  final bool loading;
-  final double height;
-  final IconData? icon;
+// ─────────────────────────────────────────────────────────────────────────────
+// PrimaryButton — solid navy CTA
+// ─────────────────────────────────────────────────────────────────────────────
 
+class PrimaryButton extends StatelessWidget {
   const PrimaryButton({
     super.key,
     required this.label,
@@ -19,6 +16,12 @@ class PrimaryButton extends StatelessWidget {
     this.height = 52,
     this.icon,
   });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final bool loading;
+  final double height;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) => SizedBox(
@@ -29,12 +32,14 @@ class PrimaryButton extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             backgroundColor: kNavy,
             foregroundColor: Colors.white,
-            disabledBackgroundColor: kNavy.withOpacity(0.45),
+            // withAlpha(115) ≈ 45 % opacity — replaces deprecated withOpacity(0.45)
+            disabledBackgroundColor: kNavy.withAlpha(115),
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
             ),
             textStyle: const TextStyle(
+              fontFamily: 'IBMPlexSansArabic',
               fontWeight: FontWeight.w700,
               fontSize: 14,
               letterSpacing: 0.5,
@@ -63,13 +68,11 @@ class PrimaryButton extends StatelessWidget {
       );
 }
 
-/// Gold outline button â€” secondary CTA.
-class OutlineButton extends StatefulWidget {
-  final String label;
-  final VoidCallback? onPressed;
-  final double height;
-  final IconData? icon;
+// ─────────────────────────────────────────────────────────────────────────────
+// OutlineButton — navy outline, gold hover
+// ─────────────────────────────────────────────────────────────────────────────
 
+class OutlineButton extends StatefulWidget {
   const OutlineButton({
     super.key,
     required this.label,
@@ -78,18 +81,27 @@ class OutlineButton extends StatefulWidget {
     this.icon,
   });
 
+  final String label;
+  final VoidCallback? onPressed;
+  final double height;
+  final IconData? icon;
+
   @override
   State<OutlineButton> createState() => _OutlineButtonState();
 }
 
 class _OutlineButtonState extends State<OutlineButton> {
-  bool _h = false;
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) => MouseRegion(
-        cursor: SystemMouseCursors.click,
-        onEnter: (_) => setState(() => _h = true),
-        onExit: (_) => setState(() => _h = false),
+        cursor: widget.onPressed != null
+            ? SystemMouseCursors.click
+            : SystemMouseCursors.basic,
+        onEnter: (_) {
+          if (widget.onPressed != null) setState(() => _hovered = true);
+        },
+        onExit: (_) => setState(() => _hovered = false),
         child: GestureDetector(
           onTap: widget.onPressed,
           child: AnimatedContainer(
@@ -97,9 +109,9 @@ class _OutlineButtonState extends State<OutlineButton> {
             height: widget.height,
             padding: const EdgeInsets.symmetric(horizontal: 24),
             decoration: BoxDecoration(
-              color: _h ? kGold : Colors.transparent,
+              color: _hovered ? kGold : Colors.transparent,
               border: Border.all(
-                color: _h ? kGold : kNavy,
+                color: _hovered ? kGold : kNavy,
                 width: 1.5,
               ),
               borderRadius: BorderRadius.circular(10),
@@ -109,16 +121,17 @@ class _OutlineButtonState extends State<OutlineButton> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (widget.icon != null) ...[
-                  Icon(widget.icon, size: 16, color: _h ? kNavy : kNavy),
+                  Icon(widget.icon, size: 16, color: kNavy),
                   const SizedBox(width: 8),
                 ],
                 Text(
                   widget.label,
-                  style: TextStyle(
+                  style: const TextStyle(
+                    fontFamily: 'IBMPlexSansArabic',
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
-                    color: _h ? kNavy : kNavy,
+                    color: kNavy,
                   ),
                 ),
               ],
@@ -128,13 +141,11 @@ class _OutlineButtonState extends State<OutlineButton> {
       );
 }
 
-/// Gold-filled button â€” accent CTA.
-class GoldButton extends StatelessWidget {
-  final String label;
-  final VoidCallback? onPressed;
-  final bool loading;
-  final double height;
+// ─────────────────────────────────────────────────────────────────────────────
+// GoldButton — gold-filled accent CTA
+// ─────────────────────────────────────────────────────────────────────────────
 
+class GoldButton extends StatelessWidget {
   const GoldButton({
     super.key,
     required this.label,
@@ -142,6 +153,11 @@ class GoldButton extends StatelessWidget {
     this.loading = false,
     this.height = 52,
   });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final bool loading;
+  final double height;
 
   @override
   Widget build(BuildContext context) => SizedBox(
@@ -157,6 +173,7 @@ class GoldButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
             textStyle: const TextStyle(
+              fontFamily: 'IBMPlexSansArabic',
               fontWeight: FontWeight.w700,
               fontSize: 14,
               letterSpacing: 0.5,

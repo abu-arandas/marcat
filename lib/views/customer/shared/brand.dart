@@ -1,7 +1,4 @@
 // lib/views/customer/shared/brand.dart
-//
-// Customer-facing brand token aliases.
-// All colours are sourced from AppColors to maintain a single source of truth.
 
 import 'package:marcat/core/constants/app_colors.dart';
 
@@ -10,4 +7,5 @@ const kGold = AppColors.marcatGoldVibrant;
 const kCream = AppColors.marcatCream;
 const kSlate = AppColors.marcatSlate;
 const kRed = AppColors.saleRed;
+const kBorder = AppColors.borderLight;
 const kBorderColor = AppColors.borderStrong;

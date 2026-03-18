@@ -15,11 +15,13 @@ import 'core/initial_binding.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Load .env in debug mode only — production values are baked in via CI.
   if (kDebugMode) {
     try {
       await dotenv.load(fileName: '.env');
     } catch (_) {
-      debugPrint('[main] .env file not found — ensure it exists for local dev.');
+      debugPrint(
+          '[main] .env file not found — ensure it exists for local dev.');
     }
   }
 
@@ -42,8 +44,6 @@ class MarcatApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         themeMode: ThemeMode.light,
-
-        // ── Routing & DI ─────────────────────────────────────────────
         initialBinding: InitialBinding(),
         initialRoute: AppRoutes.home,
         getPages: AppPages.pages,

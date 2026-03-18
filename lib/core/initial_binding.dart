@@ -10,6 +10,15 @@ import '../controllers/admin_controller.dart';
 import '../controllers/delivery_controller.dart';
 import '../controllers/search_controller.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// InitialBinding
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Registers all global GetX controllers at app start.
+///
+/// Permanent controllers (permanent: true) live for the entire app lifetime.
+/// Lazy controllers (fenix: true) are recreated automatically after disposal.
+
 class InitialBinding extends Bindings {
   @override
   void dependencies() {
@@ -22,6 +31,9 @@ class InitialBinding extends Bindings {
     // ── Cart ─────────────────────────────────────────────────────────────────
     Get.put(CartController(), permanent: true);
 
+    // ── Search ───────────────────────────────────────────────────────────────
+    Get.put(MarcatSearchController(), permanent: true);
+
     // ── Account ──────────────────────────────────────────────────────────────
     Get.lazyPut(() => AccountController(), fenix: true);
 
@@ -30,8 +42,5 @@ class InitialBinding extends Bindings {
 
     // ── Delivery ─────────────────────────────────────────────────────────────
     Get.lazyPut(() => DeliveryController(), fenix: true);
-
-    // ── Search ───────────────────────────────────────────────────────────────
-    Get.put(MarcatSearchController(), permanent: true);
   }
 }

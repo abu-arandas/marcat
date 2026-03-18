@@ -3,8 +3,16 @@
 import 'package:flutter/material.dart';
 import 'brand.dart';
 
-/// Reusable section header used across all customer pages.
-/// Shows a gold eyebrow label, serif title, optional subtitle & trailing action.
+// ─────────────────────────────────────────────────────────────────────────────
+// SectionHeader
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Reusable editorial section header used across all customer pages.
+///
+/// Layout:
+///   [gold rule] EYEBROW
+///   Title (Playfair)
+///   subtitle (optional)         [trailing action (optional)]
 class SectionHeader extends StatelessWidget {
   const SectionHeader({
     super.key,
@@ -18,7 +26,11 @@ class SectionHeader extends StatelessWidget {
   final String eyebrow;
   final String title;
   final String? subtitle;
+
+  /// Optional trailing widget — typically a "View All" / "See More" button.
   final Widget? action;
+
+  /// When true, renders white text (use on dark / navy backgrounds).
   final bool dark;
 
   @override
@@ -56,7 +68,7 @@ class SectionHeader extends StatelessWidget {
                 Text(
                   title,
                   style: TextStyle(
-                    fontFamily: 'PlayfairDisplay', // ✅ correct — no space
+                    fontFamily: 'PlayfairDisplay',
                     fontSize: 30,
                     fontWeight: FontWeight.w700,
                     color: dark ? Colors.white : kNavy,
@@ -72,7 +84,8 @@ class SectionHeader extends StatelessWidget {
                     style: TextStyle(
                       fontFamily: 'IBMPlexSansArabic',
                       fontSize: 14,
-                      color: dark ? Colors.white.withOpacity(0.55) : kSlate,
+                      // withAlpha(140) ≈ 55 % opacity
+                      color: dark ? Colors.white.withAlpha(140) : kSlate,
                       height: 1.5,
                     ),
                   ),
@@ -81,7 +94,7 @@ class SectionHeader extends StatelessWidget {
             ),
           ),
 
-          // ── Trailing action (e.g. "View All" button) ──────────────────
+          // ── Trailing action ───────────────────────────────────────────
           if (action != null) ...[
             const SizedBox(width: 16),
             action!,

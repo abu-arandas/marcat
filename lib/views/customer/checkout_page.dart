@@ -17,15 +17,9 @@ import 'package:marcat/models/customer_address_model.dart';
 import 'package:marcat/models/enums.dart';
 
 import 'scaffold/app_scaffold.dart';
-import 'shared/marcat_buttons.dart';
+import 'shared/brand.dart'; // ✅ single source of colour constants
+import 'shared/buttons.dart';
 import 'shared/section_header.dart';
-
-// ── Local colour aliases ───────────────────────────────────────────────────────
-const _kNavy = AppColors.marcatNavy;
-const _kGold = AppColors.marcatGold;
-const _kCream = AppColors.marcatCream;
-const _kSlate = AppColors.marcatSlate;
-const _kBorder = AppColors.borderLight;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CheckoutPage
@@ -39,32 +33,29 @@ class CheckoutPage extends StatefulWidget {
 }
 
 class _CheckoutPageState extends State<CheckoutPage> {
+  // ── State ─────────────────────────────────────────────────────────────────
   final _addresses = <CustomerAddressModel>[];
   int? _selectedAddressId;
-  bool _isLoadingAddresses = true;
+  int _step = 0; // 0 = address, 1 = review, 2 = success
+  bool _isLoadingAddresses = false;
   bool _isPlacingOrder = false;
-  int _step = 0; // 0=address, 1=review, 2=success
-
-  // Address form state
   bool _showAddressForm = false;
   String _label = 'Home';
-  late final TextEditingController _line1Ctrl;
-  late final TextEditingController _line2Ctrl;
-  late final TextEditingController _cityCtrl;
-  late final TextEditingController _postalCtrl;
-  final _formKey = GlobalKey<FormState>();
 
-  AccountController get _accountCtrl => Get.find<AccountController>();
+  // ── Address form controllers ───────────────────────────────────────────────
+  final _line1Ctrl = TextEditingController();
+  final _line2Ctrl = TextEditingController();
+  final _cityCtrl = TextEditingController();
+  final _postalCtrl = TextEditingController();
+  final _addressFormKey = GlobalKey<FormState>();
+
   CartController get _cart => Get.find<CartController>();
+  AccountController get _account => Get.find<AccountController>();
   AuthController get _auth => Get.find<AuthController>();
 
   @override
   void initState() {
     super.initState();
-    _line1Ctrl = TextEditingController();
-    _line2Ctrl = TextEditingController();
-    _cityCtrl = TextEditingController();
-    _postalCtrl = TextEditingController();
     _loadAddresses();
   }
 
@@ -78,78 +69,72 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   Future<void> _loadAddresses() async {
-    final user = _auth.user;
+    final user = _auth.state.value.user;
     if (user == null) return;
     if (mounted) setState(() => _isLoadingAddresses = true);
     try {
-      await _accountCtrl.fetchAddresses(user.id);
+      await _account.fetchAddresses(user.id);
       if (mounted) {
         setState(() {
           _addresses
             ..clear()
-            ..addAll(_accountCtrl.addresses);
-          final def = _addresses.where((a) => a.isDefault).firstOrNull;
-          _selectedAddressId = def?.id ?? _addresses.firstOrNull?.id;
-          _isLoadingAddresses = false;
+            ..addAll(_account.addresses);
+          if (_addresses.isNotEmpty) {
+            _selectedAddressId = _addresses.first.id;
+          }
         });
       }
-    } catch (e) {
-      Get.snackbar('Error', 'Could not load addresses: ${e.toString()}');
+    } catch (_) {
+      // Non-critical — user can still add a new address
+    } finally {
       if (mounted) setState(() => _isLoadingAddresses = false);
     }
   }
 
   Future<void> _addAddress() async {
-    if (!_formKey.currentState!.validate()) return;
-    final user = _auth.user;
+    if (!(_addressFormKey.currentState?.validate() ?? false)) return;
+    final user = _auth.state.value.user;
     if (user == null) return;
     try {
-      await _accountCtrl.addAddress(user.id, {
+      final newAddr = await _account.addAddress(user.id, {
         'label': _label,
-        'full_address': [
-          _line1Ctrl.text.trim(),
-          if (_line2Ctrl.text.trim().isNotEmpty) _line2Ctrl.text.trim(),
-        ].join(', '),
+        'full_address': _line1Ctrl.text.trim(),
         'city': _cityCtrl.text.trim(),
         'country': 'Jordan',
-        'is_default': _addresses.isEmpty,
+        'is_default': false,
+        'latitude': 0,
+        'longitude': 0,
       });
       if (mounted) {
         setState(() {
-          _addresses
-            ..clear()
-            ..addAll(_accountCtrl.addresses);
-          if (_addresses.isNotEmpty) {
-            _selectedAddressId = _addresses.last.id;
-          }
+          _addresses.add(newAddr);
+          _selectedAddressId = newAddr.id;
           _showAddressForm = false;
-          _clearForm();
         });
+        _line1Ctrl.clear();
+        _line2Ctrl.clear();
+        _cityCtrl.clear();
+        _postalCtrl.clear();
       }
     } catch (e) {
-      Get.snackbar('Error', e.toString());
+      Get.snackbar('Error', e.toString(),
+          backgroundColor: AppColors.errorRed, colorText: Colors.white);
     }
   }
 
-  void _clearForm() {
-    _line1Ctrl.clear();
-    _line2Ctrl.clear();
-    _cityCtrl.clear();
-    _postalCtrl.clear();
-    _label = 'Home';
-  }
-
   Future<void> _placeOrder() async {
-    final user = _auth.user;
+    final user = _auth.state.value.user;
     if (user == null) {
-      Get.snackbar(
-          'Authentication Required', 'Please sign in to place an order.');
       Get.toNamed(AppRoutes.login);
       return;
     }
     if (_selectedAddressId == null) {
       Get.snackbar(
-          'Address Required', 'Please select or add a delivery address.');
+        'Address Required',
+        'Please select or add a delivery address.',
+        backgroundColor: AppColors.statusAmber,
+        colorText: Colors.white,
+      );
       return;
     }
     if (mounted) setState(() => _isPlacingOrder = true);
@@ -216,14 +201,25 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         line2Ctrl: _line2Ctrl,
                         cityCtrl: _cityCtrl,
                         postalCtrl: _postalCtrl,
-                        formKey: _formKey,
+                        formKey: _addressFormKey,
                         onSelectAddress: (id) =>
                             setState(() => _selectedAddressId = id),
                         onToggleForm: () => setState(
                             () => _showAddressForm = !_showAddressForm),
                         onLabelChanged: (l) => setState(() => _label = l),
                         onAddAddress: _addAddress,
-                        onContinue: () => setState(() => _step = 1),
+                        onContinue: () {
+                          if (_selectedAddressId == null) {
+                            Get.snackbar(
+                              'Address Required',
+                              'Please select or add a delivery address.',
+                              backgroundColor: AppColors.statusAmber,
+                              colorText: Colors.white,
+                            );
+                            return;
+                          }
+                          setState(() => _step = 1);
+                        },
                       ),
           ),
         ),
@@ -231,7 +227,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _AddressStep
+// _AddressStep — step 0
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _AddressStep extends StatelessWidget {
@@ -269,6 +265,8 @@ class _AddressStep extends StatelessWidget {
   final VoidCallback onAddAddress;
   final VoidCallback onContinue;
 
+  static const _labels = ['Home', 'Work', 'Other'];
+
   @override
   Widget build(BuildContext context) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -283,17 +281,20 @@ class _AddressStep extends StatelessWidget {
           // ── Saved addresses ──────────────────────────────────────────────
           if (isLoading)
             const Center(
-              child: CircularProgressIndicator(strokeWidth: 2, color: _kGold),
+              child: CircularProgressIndicator(strokeWidth: 2, color: kGold),
             )
           else ...[
             if (addresses.isNotEmpty)
-              ...addresses.map((addr) => _AddressTile(
-                    address: addr,
-                    selected: addr.id == selectedAddressId,
-                    onTap: () => onSelectAddress(addr.id),
+              ...addresses.map((addr) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _AddressTile(
+                      address: addr,
+                      selected: addr.id == selectedAddressId,
+                      onTap: () => onSelectAddress(addr.id),
+                    ),
                   )),
 
-            // Add new address toggle
+            // ── Add address toggle ─────────────────────────────────────
             TextButton.icon(
               onPressed: onToggleForm,
               icon: Icon(
@@ -303,35 +304,105 @@ class _AddressStep extends StatelessWidget {
                 size: 18,
               ),
               label: Text(
-                showAddressForm ? 'Cancel' : 'Add New Address',
-                style: const TextStyle(fontWeight: FontWeight.w600),
+                showAddressForm ? 'Hide Form' : 'Add New Address',
+                style: const TextStyle(
+                  fontFamily: 'IBMPlexSansArabic',
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-              style: TextButton.styleFrom(foregroundColor: _kNavy),
+              style: TextButton.styleFrom(foregroundColor: kNavy),
             ),
 
-            // Address form
+            // ── Address form ───────────────────────────────────────────
             if (showAddressForm)
-              _AddressForm(
-                label: label,
-                line1Ctrl: line1Ctrl,
-                line2Ctrl: line2Ctrl,
-                cityCtrl: cityCtrl,
-                postalCtrl: postalCtrl,
-                formKey: formKey,
-                onLabelChanged: onLabelChanged,
-                onSubmit: onAddAddress,
+              Form(
+                key: formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Label',
+                      style: TextStyle(
+                        fontFamily: 'IBMPlexSansArabic',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: kSlate,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: _labels.map((l) {
+                        final isSelected = l == label;
+                        return ChoiceChip(
+                          label: Text(
+                            l,
+                            style: TextStyle(
+                              fontFamily: 'IBMPlexSansArabic',
+                              fontWeight: FontWeight.w600,
+                              color: isSelected ? Colors.white : kNavy,
+                            ),
+                          ),
+                          selected: isSelected,
+                          onSelected: (_) => onLabelChanged(l),
+                          selectedColor: kNavy,
+                          backgroundColor: Colors.white,
+                          side: const BorderSide(color: kBorder),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+                    _CheckoutField(
+                      controller: line1Ctrl,
+                      label: 'Address Line 1',
+                      validator: (v) =>
+                          (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    _CheckoutField(
+                      controller: line2Ctrl,
+                      label: 'Address Line 2 (optional)',
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _CheckoutField(
+                            controller: cityCtrl,
+                            label: 'City',
+                            validator: (v) => (v == null || v.trim().isEmpty)
+                                ? 'Required'
+                                : null,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _CheckoutField(
+                            controller: postalCtrl,
+                            label: 'Postal Code',
+                            keyboardType: TextInputType.number,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    PrimaryButton(
+                      label: 'Save Address',
+                      onPressed: onAddAddress,
+                      height: 46,
+                    ),
+                  ],
+                ),
               ),
           ],
 
           const SizedBox(height: 32),
-
-          // Continue button (only shown if an address is selected)
-          if (selectedAddressId != null)
-            PrimaryButton(
-              label: 'Continue to Review',
-              icon: Icons.arrow_forward_rounded,
-              onPressed: onContinue,
-            ),
+          PrimaryButton(
+            label: 'Continue to Review',
+            onPressed: onContinue,
+            icon: Icons.arrow_forward_rounded,
+          ),
         ],
       );
 }
@@ -356,13 +427,12 @@ class _AddressTile extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: selected ? _kNavy.withOpacity(0.05) : Colors.white,
-            borderRadius: BorderRadius.circular(10),
+            color: selected ? kNavy.withAlpha(13) : Colors.white,
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: selected ? _kNavy : _kBorder,
+              color: selected ? kNavy : kBorder,
               width: selected ? 1.5 : 1,
             ),
           ),
@@ -371,52 +441,26 @@ class _AddressTile extends StatelessWidget {
               Icon(
                 selected
                     ? Icons.radio_button_checked_rounded
-                    : Icons.radio_button_off_rounded,
-                color: selected ? _kNavy : _kSlate,
+                    : Icons.radio_button_unchecked_rounded,
                 size: 20,
+                color: selected ? kNavy : kSlate,
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          address.label,
-                          style: AppTextStyles.titleSmall,
-                        ),
-                        if (address.isDefault) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: _kGold.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text(
-                              'DEFAULT',
-                              style: TextStyle(
-                                fontFamily: 'IBMPlexSansArabic',
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                color: _kGold,
-                                letterSpacing: 1,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
+                    Text(
+                      address.label,
+                      style: AppTextStyles.titleSmall,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       '${address.fullAddress}, ${address.city}',
                       style: const TextStyle(
                         fontFamily: 'IBMPlexSansArabic',
-                        fontSize: 13,
-                        color: _kSlate,
-                        height: 1.4,
+                        fontSize: 12,
+                        color: kSlate,
                       ),
                     ),
                   ],
@@ -429,114 +473,7 @@ class _AddressTile extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _AddressForm
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _AddressForm extends StatelessWidget {
-  const _AddressForm({
-    required this.label,
-    required this.line1Ctrl,
-    required this.line2Ctrl,
-    required this.cityCtrl,
-    required this.postalCtrl,
-    required this.formKey,
-    required this.onLabelChanged,
-    required this.onSubmit,
-  });
-
-  final String label;
-  final TextEditingController line1Ctrl;
-  final TextEditingController line2Ctrl;
-  final TextEditingController cityCtrl;
-  final TextEditingController postalCtrl;
-  final GlobalKey<FormState> formKey;
-  final ValueChanged<String> onLabelChanged;
-  final VoidCallback onSubmit;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.only(top: 8, bottom: 16),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: _kCream,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: _kBorder),
-        ),
-        child: Form(
-          key: formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Label selector
-              Row(
-                children: ['Home', 'Work', 'Other'].map((l) {
-                  final isSelected = label == l;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(l,
-                          style: TextStyle(
-                            fontFamily: 'IBMPlexSansArabic',
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: isSelected ? Colors.white : _kNavy,
-                          )),
-                      selected: isSelected,
-                      onSelected: (_) => onLabelChanged(l),
-                      selectedColor: _kNavy,
-                      backgroundColor: Colors.white,
-                      side: const BorderSide(color: _kBorder),
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
-              _CheckoutField(
-                controller: line1Ctrl,
-                label: 'Address Line 1',
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Required' : null,
-              ),
-              const SizedBox(height: 12),
-              _CheckoutField(
-                controller: line2Ctrl,
-                label: 'Address Line 2 (optional)',
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _CheckoutField(
-                      controller: cityCtrl,
-                      label: 'City',
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'Required' : null,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _CheckoutField(
-                      controller: postalCtrl,
-                      label: 'Postal Code',
-                      keyboardType: TextInputType.number,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              PrimaryButton(
-                label: 'Save Address',
-                onPressed: onSubmit,
-                height: 46,
-              ),
-            ],
-          ),
-        ),
-      );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// _ReviewStep
+// _ReviewStep — step 1
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ReviewStep extends StatelessWidget {
@@ -577,11 +514,11 @@ class _ReviewStep extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _kBorder),
+              border: Border.all(color: kBorder),
             ),
             child: Row(
               children: [
-                const Icon(Icons.location_on_outlined, size: 18, color: _kGold),
+                const Icon(Icons.location_on_outlined, size: 18, color: kGold),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -593,7 +530,7 @@ class _ReviewStep extends StatelessWidget {
                         style: const TextStyle(
                           fontFamily: 'IBMPlexSansArabic',
                           fontSize: 12,
-                          color: _kSlate,
+                          color: kSlate,
                         ),
                       ),
                     ],
@@ -607,7 +544,7 @@ class _ReviewStep extends StatelessWidget {
                       fontFamily: 'IBMPlexSansArabic',
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: _kNavy,
+                      color: kNavy,
                     ),
                   ),
                 ),
@@ -626,34 +563,68 @@ class _ReviewStep extends StatelessWidget {
 
         const SizedBox(height: 24),
 
-        // ── Order totals ─────────────────────────────────────────────────
-        Obx(() => Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _kBorder),
-              ),
-              child: Column(
-                children: [
-                  _TotalRow('Subtotal', cart.subtotal.toJOD()),
-                  if (cart.discountTotal > 0)
-                    _TotalRow('Discount', '-${cart.discountTotal.toJOD()}',
-                        color: AppColors.successGreen),
-                  _TotalRow('Shipping', 'Free'),
-                  const Divider(color: _kBorder),
-                  _TotalRow('Total', cart.grandTotal.toJOD(), bold: true),
-                ],
-              ),
-            )),
+        // ── Totals ───────────────────────────────────────────────────────
+        Obx(() {
+          final subtotal = cart.subtotal;
+          final discount = cart.discountTotal;
+          final total = cart.grandTotal;
 
-        const SizedBox(height: 24),
+          return Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: kBorder),
+            ),
+            child: Column(
+              children: [
+                _TotalRow(label: 'Subtotal', value: subtotal.toJOD()),
+                if (discount > 0)
+                  _TotalRow(
+                    label: 'Discount',
+                    value: '-${discount.toJOD()}',
+                    color: kRed,
+                  ),
+                _TotalRow(
+                  label: 'Shipping',
+                  value: 'Free',
+                  color: AppColors.successGreen,
+                ),
+                const Divider(color: kBorder, height: 20),
+                _TotalRow(
+                  label: 'Total',
+                  value: total.toJOD(),
+                  bold: true,
+                ),
+              ],
+            ),
+          );
+        }),
+
+        const SizedBox(height: 32),
 
         PrimaryButton(
           label: 'Place Order',
+          onPressed: isPlacingOrder ? null : onPlaceOrder,
           loading: isPlacingOrder,
           icon: Icons.check_circle_outline_rounded,
-          onPressed: isPlacingOrder ? null : onPlaceOrder,
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton(
+          onPressed: () => onStepChanged(0),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 48),
+            side: const BorderSide(color: kBorder),
+            foregroundColor: kNavy,
+          ),
+          child: const Text(
+            'Back to Address',
+            style: TextStyle(
+              fontFamily: 'IBMPlexSansArabic',
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
+          ),
         ),
       ],
     );
@@ -667,14 +638,34 @@ class _ReviewItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: _kBorder),
+          border: Border.all(color: kBorder),
         ),
         child: Row(
           children: [
+            Container(
+              width: 56,
+              height: 68,
+              decoration: BoxDecoration(
+                color: kCream,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: item.primaryImageUrl != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: Image.network(
+                        item.primaryImageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            const ColoredBox(color: AppColors.marcatCream),
+                      ),
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -683,34 +674,31 @@ class _ReviewItem extends StatelessWidget {
                       style: AppTextStyles.titleSmall,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
-                    [
-                      item.colorName,
-                      item.sizeLabel,
-                      'Qty: ${item.quantity}',
-                    ].join(' · '),
+                    'Qty: ${item.quantity}',
                     style: const TextStyle(
                       fontFamily: 'IBMPlexSansArabic',
                       fontSize: 12,
-                      color: _kSlate,
+                      color: kSlate,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 12),
-            Text(
-              (item.unitPrice * item.quantity).toJOD(),
-              style: AppTextStyles.priceSmall,
-            ),
+            Text(item.lineTotal.toJOD(), style: AppTextStyles.priceMedium),
           ],
         ),
       );
 }
 
 class _TotalRow extends StatelessWidget {
-  const _TotalRow(this.label, this.value, {this.bold = false, this.color});
+  const _TotalRow({
+    required this.label,
+    required this.value,
+    this.bold = false,
+    this.color,
+  });
 
   final String label;
   final String value;
@@ -727,7 +715,7 @@ class _TotalRow extends StatelessWidget {
               label,
               style: bold
                   ? AppTextStyles.titleSmall
-                  : AppTextStyles.bodyMedium.copyWith(color: _kSlate),
+                  : AppTextStyles.bodyMedium.copyWith(color: kSlate),
             ),
             Text(
               value,
@@ -741,7 +729,7 @@ class _TotalRow extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _SuccessStep
+// _SuccessStep — step 2
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SuccessStep extends StatelessWidget {
@@ -758,7 +746,7 @@ class _SuccessStep extends StatelessWidget {
             Container(
               width: 80,
               height: 80,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppColors.successGreenLight,
                 shape: BoxShape.circle,
               ),
@@ -775,17 +763,17 @@ class _SuccessStep extends StatelessWidget {
                 fontFamily: 'PlayfairDisplay',
                 fontSize: 32,
                 fontWeight: FontWeight.w700,
-                color: _kNavy,
+                color: kNavy,
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
             const Text(
-              'Thank you for your order.\nWe\'ll notify you when it ships.',
+              "Thank you for your order.\nWe'll notify you when it ships.",
               style: TextStyle(
                 fontFamily: 'IBMPlexSansArabic',
                 fontSize: 15,
-                color: _kSlate,
+                color: kSlate,
                 height: 1.6,
               ),
               textAlign: TextAlign.center,
@@ -806,7 +794,7 @@ class _SuccessStep extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _CheckoutField  (shared form field)
+// _CheckoutField — shared form input
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _CheckoutField extends StatelessWidget {
@@ -830,28 +818,28 @@ class _CheckoutField extends StatelessWidget {
         style: const TextStyle(
           fontFamily: 'IBMPlexSansArabic',
           fontSize: 14,
-          color: _kNavy,
+          color: kNavy,
         ),
         decoration: InputDecoration(
           labelText: label,
           labelStyle: const TextStyle(
             fontFamily: 'IBMPlexSansArabic',
             fontSize: 13,
-            color: _kSlate,
+            color: kSlate,
           ),
           filled: true,
           fillColor: Colors.white,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: _kBorder),
+            borderSide: const BorderSide(color: kBorder),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: _kBorder),
+            borderSide: const BorderSide(color: kBorder),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: _kNavy, width: 1.5),
+            borderSide: const BorderSide(color: kNavy, width: 1.5),
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
