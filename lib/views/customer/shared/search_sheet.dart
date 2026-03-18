@@ -1,71 +1,112 @@
 // lib/views/customer/shared/search_sheet.dart
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart' hide SearchController;
 import 'package:get/get.dart';
 
 import '../../../controllers/search_controller.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_text_styles.dart';
+import '../../../core/extensions/currency_extensions.dart';
 import '../../../models/product_model.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SearchSheet
+// ─────────────────────────────────────────────────────────────────────────────
 
 class SearchSheet extends StatelessWidget {
   const SearchSheet({super.key});
 
-  static void show(BuildContext context) =>
-      showDialog(context: context, builder: (_) => SearchSheet());
+  /// Open the search dialog from anywhere.
+  static void show(BuildContext context) => showDialog(
+        context: context,
+        useSafeArea: false,
+        builder: (_) => const SearchSheet(),
+      );
 
   @override
-  Widget build(BuildContext context) => GetBuilder<MarcatSearchController>(
-        init: MarcatSearchController(),
-        builder: (ctrl) => AlertDialog(
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Search',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-              ),
-              IconButton(
-                icon: const Icon(Icons.close_rounded),
-                onPressed: () => Get.back(),
-                color: const Color(0xFF9E9E9E),
-                tooltip: 'Close',
-              ),
-            ],
-          ),
-          content: Container(
-            width: MediaQuery.of(context).size.width * 0.9,
-            height: MediaQuery.of(context).size.height * 0.9,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Search field
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-                  child: _SearchField(ctrl: ctrl),
-                ),
+  Widget build(BuildContext context) {
+    // Use Get.find — the controller is already registered as permanent in
+    // InitialBinding. Never pass init: here or GetX will create a duplicate.
+    final ctrl = Get.find<MarcatSearchController>();
 
-                // Scrollable body
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                    child: ctrl.textController.text.trim().isEmpty
-                        ? _SuggestionsSection(ctrl: ctrl)
-                        : _ResultsSection(ctrl: ctrl),
-                  ),
+    final width = MediaQuery.sizeOf(context).width;
+    final isDesktop = width > 900;
+
+    return Dialog(
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isDesktop ? width * 0.15 : 16,
+        vertical: isDesktop ? 60 : 40,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Header ──────────────────────────────────────────────────────
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(
+                  bottom: BorderSide(color: AppColors.borderLight),
                 ),
-              ],
+              ),
+              child: Row(
+                children: [
+                  const Text(
+                    'Search',
+                    style: TextStyle(
+                      fontFamily: 'PlayfairDisplay',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.marcatNavy,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () {
+                      ctrl.clear();
+                      Get.back();
+                    },
+                    color: AppColors.marcatSlate,
+                    tooltip: 'Close',
+                    splashRadius: 18,
+                  ),
+                ],
+              ),
             ),
-          ),
+
+            // ── Search field ─────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: _SearchField(ctrl: ctrl),
+            ),
+
+            // ── Scrollable results body ──────────────────────────────────────
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                child: ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: ctrl.textController,
+                  builder: (_, value, __) => value.text.trim().isEmpty
+                      ? _SuggestionsSection(ctrl: ctrl)
+                      : _ResultsSection(ctrl: ctrl),
+                ),
+              ),
+            ),
+          ],
         ),
-      );
+      ),
+    );
+  }
 }
 
-// ---------------------------------------------------------------------------
-// Sub-widgets
-// ---------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────────────────
+// _SearchField
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _SearchField extends StatelessWidget {
   const _SearchField({required this.ctrl});
@@ -78,12 +119,21 @@ class _SearchField extends StatelessWidget {
         autofocus: true,
         textInputAction: TextInputAction.search,
         onSubmitted: ctrl.submitQuery,
+        style: const TextStyle(
+          fontFamily: 'IBMPlexSansArabic',
+          fontSize: 15,
+          color: AppColors.marcatNavy,
+        ),
         decoration: InputDecoration(
-          hintText: 'Search clothing, brandsâ€¦',
-          hintStyle: const TextStyle(color: Color(0xFF9E9E9E), fontSize: 15),
-          prefixIcon: Icon(
+          hintText: 'Search clothing, brands…',
+          hintStyle: const TextStyle(
+            fontFamily: 'IBMPlexSansArabic',
+            color: AppColors.marcatSlate,
+            fontSize: 15,
+          ),
+          prefixIcon: const Icon(
             Icons.search_rounded,
-            color: Theme.of(context).colorScheme.primary,
+            color: AppColors.marcatGold,
           ),
           suffixIcon: Obx(
             () => ctrl.isLoading.value
@@ -92,25 +142,37 @@ class _SearchField extends StatelessWidget {
                     child: SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.marcatGold,
+                      ),
                     ),
                   )
-                : ValueListenableBuilder(
+                : ValueListenableBuilder<TextEditingValue>(
                     valueListenable: ctrl.textController,
                     builder: (_, value, __) => value.text.isNotEmpty
                         ? IconButton(
                             icon: const Icon(Icons.clear_rounded, size: 18),
-                            onPressed: ctrl.textController.clear,
-                            color: const Color(0xFF9E9E9E),
+                            onPressed: ctrl.clear,
+                            color: AppColors.marcatSlate,
                           )
                         : const SizedBox.shrink(),
                   ),
           ),
           filled: true,
-          fillColor: const Color(0xFFF5F5F5),
+          fillColor: AppColors.marcatCream,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
+            borderSide: const BorderSide(color: AppColors.borderLight),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.borderLight),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide:
+                const BorderSide(color: AppColors.marcatNavy, width: 1.5),
           ),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -118,27 +180,32 @@ class _SearchField extends StatelessWidget {
       );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// _SuggestionsSection  (shown before any query is typed)
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _SuggestionsSection extends StatelessWidget {
   const _SuggestionsSection({required this.ctrl});
 
-  final SearchController ctrl;
+  final MarcatSearchController ctrl;
 
   @override
   Widget build(BuildContext context) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _SectionLabel('TRENDING CATEGORIES'),
-          const SizedBox(height: 10),
+          const _SectionLabel('BROWSE CATEGORIES'),
+          const SizedBox(height: 12),
           Obx(
             () => ctrl.isLoadingSuggestions.value
-                ? const Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: AppColors.marcatGold),
                     ),
                   )
                 : ctrl.suggestions.isEmpty
-                    ? const SizedBox.shrink()
+                    ? const _EmptyHint('Start typing to search for products.')
                     : Wrap(
                         spacing: 8,
                         runSpacing: 8,
@@ -146,7 +213,6 @@ class _SuggestionsSection extends StatelessWidget {
                             .map((cat) => _CategoryChip(
                                   label: cat.name,
                                   onTap: () => ctrl.submitCategory(cat),
-                                  context: context,
                                 ))
                             .toList(),
                       ),
@@ -155,58 +221,163 @@ class _SuggestionsSection extends StatelessWidget {
       );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// _ResultsSection  (shown after query is typed)
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _ResultsSection extends StatelessWidget {
   const _ResultsSection({required this.ctrl});
 
-  final SearchController ctrl;
+  final MarcatSearchController ctrl;
 
   @override
-  Widget build(BuildContext context) => Obx(
-        () {
-          if (ctrl.isSearching.value && ctrl.results.isEmpty) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 32),
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            );
-          }
+  Widget build(BuildContext context) => Obx(() {
+        if (ctrl.isSearching.value && ctrl.results.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 32),
+            child: Center(
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: AppColors.marcatGold),
+            ),
+          );
+        }
 
-          if (ctrl.results.isEmpty) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 32),
-              child: Center(
-                child: Text(
-                  'No results for "${ctrl.textController.text.trim()}"',
-                  style: const TextStyle(
-                    color: Color(0xFF9E9E9E),
-                    fontSize: 14,
+        if (ctrl.results.isEmpty && ctrl.hasSearched.value) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 32),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.search_off_rounded,
+                      size: 40, color: AppColors.marcatSlate),
+                  const SizedBox(height: 12),
+                  Obx(
+                    () => Text(
+                      'No results for "${ctrl.query.value}"',
+                      style: const TextStyle(
+                        fontFamily: 'IBMPlexSansArabic',
+                        color: AppColors.marcatSlate,
+                        fontSize: 14,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-            );
-          }
+            ),
+          );
+        }
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _SectionLabel('${ctrl.results.length} RESULTS'),
-              const SizedBox(height: 10),
-              ListView.separated(
+        if (ctrl.results.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Obx(() => _SectionLabel('${ctrl.results.length} RESULTS')),
+            const SizedBox(height: 12),
+            Obx(
+              () => ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: ctrl.results.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
+                separatorBuilder: (_, __) =>
+                    const Divider(color: AppColors.borderLight, height: 1),
                 itemBuilder: (_, i) => _ProductTile(
                   product: ctrl.results[i],
                   onTap: () => ctrl.submitProduct(ctrl.results[i]),
                 ),
               ),
-            ],
-          );
-        },
+            ),
+          ],
+        );
+      });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _ProductTile
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ProductTile extends StatelessWidget {
+  const _ProductTile({required this.product, required this.onTap});
+
+  final ProductModel product;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+        contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
+        leading: ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: SizedBox(
+            width: 52,
+            height: 64,
+            child: product.primaryImageUrl != null
+                ? CachedNetworkImage(
+                    imageUrl: product.primaryImageUrl!,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) =>
+                        const ColoredBox(color: AppColors.marcatCream),
+                    errorWidget: (_, __, ___) =>
+                        const ColoredBox(color: AppColors.marcatCream),
+                  )
+                : const ColoredBox(color: AppColors.marcatCream),
+          ),
+        ),
+        title: Text(
+          product.name,
+          style: AppTextStyles.titleSmall,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Text(
+          product.basePrice.toJOD(),
+          style: AppTextStyles.priceSmall,
+        ),
+        trailing: const Icon(
+          Icons.chevron_right_rounded,
+          color: AppColors.marcatSlate,
+          size: 20,
+        ),
+        onTap: onTap,
       );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _CategoryChip
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CategoryChip extends StatelessWidget {
+  const _CategoryChip({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.marcatCream,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.borderLight),
+          ),
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontFamily: 'IBMPlexSansArabic',
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: AppColors.marcatNavy,
+            ),
+          ),
+        ),
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared helpers
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.text);
@@ -217,93 +388,30 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) => Text(
         text,
         style: const TextStyle(
-          fontSize: 11,
+          fontFamily: 'IBMPlexSansArabic',
+          fontSize: 10,
           fontWeight: FontWeight.w700,
-          color: Color(0xFF9E9E9E),
-          letterSpacing: 1.5,
+          letterSpacing: 1.8,
+          color: AppColors.marcatSlate,
         ),
       );
 }
 
-class _CategoryChip extends StatelessWidget {
-  const _CategoryChip({
-    required this.label,
-    required this.onTap,
-    required this.context,
-  });
+class _EmptyHint extends StatelessWidget {
+  const _EmptyHint(this.text);
 
-  final String label;
-  final VoidCallback onTap;
-  final BuildContext context;
+  final String text;
 
   @override
-  Widget build(BuildContext ctx) => ActionChip(
-        label: Text(label),
-        onPressed: onTap,
-        backgroundColor: Colors.white,
-        side: const BorderSide(color: Color(0xFFEEE8E0)),
-        labelStyle: TextStyle(
-          fontSize: 13,
-          color: Theme.of(context).colorScheme.primary,
-          fontWeight: FontWeight.w500,
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      );
-}
-
-class _ProductTile extends StatelessWidget {
-  const _ProductTile({required this.product, required this.onTap});
-
-  final ProductModel product;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => ListTile(
-        contentPadding: const EdgeInsets.symmetric(vertical: 4),
-        leading: product.primaryImageUrl != null
-            ? ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  product.primaryImageUrl!,
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const _ImagePlaceholder(),
-                ),
-              )
-            : const _ImagePlaceholder(),
-        title: Text(
-          product.name,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Text(
-          '\$${product.basePrice.toStringAsFixed(2)}',
-          style: TextStyle(
-            fontSize: 13,
-            color: Theme.of(context).colorScheme.primary,
-            fontWeight: FontWeight.w500,
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontFamily: 'IBMPlexSansArabic',
+            fontSize: 14,
+            color: AppColors.marcatSlate,
           ),
         ),
-        trailing: const Icon(Icons.arrow_forward_ios_rounded,
-            size: 14, color: Color(0xFFCCCCCC)),
-        onTap: onTap,
-      );
-}
-
-class _ImagePlaceholder extends StatelessWidget {
-  const _ImagePlaceholder();
-
-  @override
-  Widget build(BuildContext context) => Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: const Color(0xFFF0F0F0),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Icon(Icons.image_outlined,
-            size: 20, color: Color(0xFFCCCCCC)),
       );
 }

@@ -195,7 +195,7 @@ class _StaffFormScreenState extends State<StaffFormScreen> {
                     decoration: const InputDecoration(labelText: 'Role'),
                     items: [
                       UserRole.salesperson,
-                      UserRole.store_manager,
+                      UserRole.storeManager,
                       UserRole.driver,
                     ]
                         .map((r) => DropdownMenuItem(

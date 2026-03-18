@@ -9,7 +9,7 @@ import 'package:get/get.dart';
 import '../../../../controllers/auth_controller.dart';
 import '../../../../controllers/cart_controller.dart';
 import '../../../../controllers/product_controller.dart';
-import '../../../../core/extensions/string_extensions.dart';
+import '../../../../core/constants/app_colors.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../models/user_model.dart';
 import '../../shared/search_sheet.dart';
@@ -19,13 +19,6 @@ import '../../shared/search_sheet.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 
 class CustomerAppBar extends StatefulWidget implements PreferredSizeWidget {
-  final String pageName;
-  final bool scrolled;
-
-  /// Whether the host scaffold has a filter drawer.
-  /// When false the filter/sort icon is hidden on mobile.
-  final bool hasFilterDrawer;
-
   const CustomerAppBar({
     super.key,
     required this.pageName,
@@ -33,12 +26,19 @@ class CustomerAppBar extends StatefulWidget implements PreferredSizeWidget {
     this.hasFilterDrawer = false,
   });
 
+  final String pageName;
+  final bool scrolled;
+
+  /// When true the filter/sort icon is shown on mobile.
+  final bool hasFilterDrawer;
+
   @override
   Size get preferredSize {
     final view = WidgetsBinding.instance.platformDispatcher.views.first;
     final logicalWidth = view.physicalSize.width / view.devicePixelRatio;
+    // Category bar is shown at tablet+ widths.
     final hasCategoryBar = logicalWidth > 768;
-    return Size.fromHeight(65 + (hasCategoryBar ? 50 : 0));
+    return Size.fromHeight(65 + (hasCategoryBar ? 48 : 0));
   }
 
   @override
@@ -49,12 +49,11 @@ class _CustomerAppBarState extends State<CustomerAppBar> {
   bool get _isHome => widget.pageName.toLowerCase() == 'home';
   bool get _isTransparent => _isHome && !widget.scrolled;
 
-  Color get _fg => _isTransparent
-      ? Colors.white
-      : Theme.of(Get.context!).colorScheme.primary;
+  Color get _fg => _isTransparent ? Colors.white : AppColors.marcatNavy;
 
-  Color get _divider =>
-      _isTransparent ? Colors.white.withOpacity(0.15) : const Color(0xFFEEE8E0);
+  Color get _divider => _isTransparent
+      ? Colors.white.withOpacity(0.15)
+      : AppColors.borderStrong;
 
   @override
   Widget build(BuildContext context) {
@@ -65,9 +64,8 @@ class _CustomerAppBarState extends State<CustomerAppBar> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
       decoration: BoxDecoration(
-        color: _isTransparent
-            ? Colors.transparent
-            : Colors.white.withOpacity(0.96),
+        color:
+            _isTransparent ? Colors.transparent : Colors.white.withOpacity(0.96),
         border: Border(bottom: BorderSide(color: _divider, width: 1)),
       ),
       child: ClipRRect(
@@ -76,402 +74,310 @@ class _CustomerAppBarState extends State<CustomerAppBar> {
             sigmaX: _isTransparent ? 0 : 16,
             sigmaY: _isTransparent ? 0 : 16,
           ),
-          child: SafeArea(
-            bottom: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // ── Main bar ────────────────────────────────────────────────
-                FB5Container(
-                  child: SizedBox(
-                    height: 64,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // Filter trigger (shop pages only on mobile)
-                        if (MediaQuery.of(context).size.width < 768 &&
-                            widget.hasFilterDrawer) ...[
-                          _iconButton(
-                            icon: Icons.tune_rounded,
-                            route: 'filters',
-                            onPressed: () => Scaffold.of(context).openDrawer(),
-                            tooltip: 'Filter & Sort',
-                          ),
-                          const SizedBox(width: 4),
-                        ],
-
-                        // ── Brand logo ───────────────────────────────────────
-                        TextButton(
-                          onPressed: () => Get.toNamed(AppRoutes.home),
-                          style: ButtonStyle(
-                            overlayColor:
-                                WidgetStateProperty.all(Colors.transparent),
-                            foregroundColor:
-                                WidgetStateProperty.resolveWith((states) {
-                              if (states.contains(WidgetState.hovered) ||
-                                  states.contains(WidgetState.focused) ||
-                                  states.contains(WidgetState.pressed)) {
-                                return Theme.of(context).colorScheme.primary;
-                              }
-                              return _fg;
-                            }),
-                            textStyle: WidgetStateProperty.all(
-                              const TextStyle(
-                                fontFamily: 'Playfair Display',
-                                fontSize: 22,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 2,
-                              ),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              const Text('MARCAT'),
-                              const SizedBox(width: 4),
-                              Container(
-                                width: 5,
-                                height: 5,
-                                decoration: BoxDecoration(
-                                  color: _fg,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ── Primary bar ───────────────────────────────────────────────
+              SizedBox(
+                height: 65,
+                child: FB5Container(
+                  child: Row(
+                    children: [
+                      // Brand wordmark
+                      GestureDetector(
+                        onTap: () => Get.toNamed(AppRoutes.home),
+                        child: Text(
+                          'MARCAT',
+                          style: TextStyle(
+                            fontFamily: 'PlayfairDisplay',
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: _isTransparent
+                                ? Colors.white
+                                : AppColors.marcatGold,
+                            letterSpacing: 3,
                           ),
                         ),
+                      ),
 
-                        // ── Desktop / tablet nav links ───────────────────────
-                        if (isDesktop || isTablet) ...[
-                          const SizedBox(width: 30),
-                          _textButton(
-                              title: 'About Us', route: AppRoutes.about),
-                          _textButton(title: 'Our Shop', route: AppRoutes.shop),
-                          _textButton(
-                              title: 'Contact Us', route: AppRoutes.contact),
-                        ],
+                      const Spacer(),
 
-                        const Spacer(),
-
-                        // ── Right actions ────────────────────────────────────
-
-                        // Search
-                        _iconButton(
-                          icon: Icons.search_rounded,
-                          route: 'search',
-                          tooltip: 'Search',
-                          onPressed: () => SearchSheet.show(context),
-                        ),
-
-                        // Wishlist (tablet+)
-                        if (isDesktop || isTablet) ...[
-                          const SizedBox(width: 2),
-                          _iconButton(
-                            icon: Icons.favorite_outline_rounded,
-                            route: AppRoutes.wishlist,
-                            tooltip: 'Wishlist',
-                            onPressed: () => Get.toNamed(AppRoutes.wishlist),
-                          ),
-                        ],
-
-                        // Cart with item count badge
-                        const SizedBox(width: 2),
-                        GetBuilder<CartController>(
-                          builder: (ctrl) {
-                            final count = ctrl.items.length;
-                            return _iconButton(
-                              icon: Icons.shopping_bag_outlined,
-                              route: AppRoutes.cart,
-                              tooltip: 'Cart',
-                              badge: count > 0 ? '$count' : null,
-                              onPressed: () => Get.toNamed(AppRoutes.cart),
-                            );
-                          },
-                        ),
-
-                        // User avatar / sign-in
-                        const SizedBox(width: 2),
-                        GetBuilder<AuthController>(
-                          builder: (ctrl) {
-                            final user = ctrl.state.value.user;
-                            return user != null
-                                ? _UserAvatar(user: user, fg: _fg)
-                                : _SignInButton(
-                                    isDesktop: isDesktop, color: _fg);
-                          },
-                        ),
-
-                        // Mobile hamburger
-                        if (!isDesktop) ...[
-                          const SizedBox(width: 4),
-                          _iconButton(
-                            icon: Icons.menu_rounded,
-                            route: 'menu',
-                            tooltip: 'Menu',
-                            onPressed: () =>
-                                Scaffold.of(context).openEndDrawer(),
-                          ),
-                        ],
+                      // Desktop nav links
+                      if (isDesktop) ...[
+                        _NavLink(label: 'Shop', route: AppRoutes.shop, fg: _fg),
+                        _NavLink(label: 'About', route: AppRoutes.about, fg: _fg),
+                        _NavLink(
+                            label: 'Contact', route: AppRoutes.contact, fg: _fg),
+                        const SizedBox(width: 16),
                       ],
-                    ),
+
+                      // Mobile filter icon (shown only when page has a filter drawer)
+                      if (!isDesktop && widget.hasFilterDrawer)
+                        _iconButton(
+                          icon: Icons.tune_rounded,
+                          tooltip: 'Filter',
+                          color: _fg,
+                          onPressed: () => Scaffold.of(context).openDrawer(),
+                        ),
+
+                      // Search
+                      _iconButton(
+                        icon: Icons.search_rounded,
+                        tooltip: 'Search',
+                        color: _fg,
+                        onPressed: () => SearchSheet.show(context),
+                      ),
+
+                      // Cart with badge
+                      GetBuilder<CartController>(
+                        builder: (cart) {
+                          final count = cart.items.fold<int>(
+                              0, (sum, item) => sum + item.quantity);
+                          return _CartIcon(
+                            count: count > 0 ? '$count' : null,
+                            color: _fg,
+                            onPressed: () => Get.toNamed(AppRoutes.cart),
+                          );
+                        },
+                      ),
+
+                      // User avatar / sign-in button
+                      const SizedBox(width: 2),
+                      GetBuilder<AuthController>(
+                        builder: (ctrl) {
+                          final user = ctrl.state.value.user;
+                          return user != null
+                              ? _UserAvatar(user: user, fg: _fg)
+                              : _SignInButton(isDesktop: isDesktop, color: _fg);
+                        },
+                      ),
+
+                      // Mobile hamburger
+                      if (!isDesktop) ...[
+                        const SizedBox(width: 4),
+                        _iconButton(
+                          icon: Icons.menu_rounded,
+                          tooltip: 'Menu',
+                          color: _fg,
+                          onPressed: () => Scaffold.of(context).openEndDrawer(),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
+              ),
 
-                // ── Category row (desktop/tablet) ────────────────────────────
-                if (isDesktop || isTablet)
-                  GetBuilder<ProductController>(
-                    builder: (productCtrl) {
-                      final cats = productCtrl.categories;
-                      if (cats.isEmpty) return const SizedBox.shrink();
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: _isTransparent
-                              ? Colors.black.withOpacity(0.15)
-                              : Colors.white60,
-                          border: Border(top: BorderSide(color: _divider)),
+              // ── Category strip (tablet+) ───────────────────────────────────
+              if (isDesktop || isTablet)
+                GetBuilder<ProductController>(
+                  builder: (productCtrl) {
+                    final cats = productCtrl.categories;
+                    if (cats.isEmpty) return const SizedBox.shrink();
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: _isTransparent
+                            ? Colors.transparent
+                            : AppColors.marcatCream.withOpacity(0.9),
+                        border: Border(
+                          bottom: BorderSide(color: _divider, width: 1),
                         ),
-                        child: FB5Container(
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children: cats
-                                  .map((cat) => _textButton(
-                                        title: cat.name,
-                                        route: '/app/category/${cat.id}',
-                                      ))
-                                  .toList(),
-                            ),
-                          ),
+                      ),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Row(
+                          children: cats.map((cat) {
+                            return GestureDetector(
+                              onTap: () =>
+                                  Get.toNamed(AppRoutes.categoryOf(cat.id)),
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 12),
+                                child: Text(
+                                  cat.name.toUpperCase(),
+                                  style: TextStyle(
+                                    fontFamily: 'IBMPlexSansArabic',
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: _fg.withOpacity(0.8),
+                                    letterSpacing: 1.5,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
                         ),
-                      );
-                    },
-                  ),
-              ],
-            ),
+                      ),
+                    );
+                  },
+                ),
+            ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _textButton({required String title, required String route}) {
-    final isActive = Get.currentRoute.contains(route);
-
-    Color resolveColor(Set<WidgetState> states) {
-      if (states.contains(WidgetState.hovered) ||
-          states.contains(WidgetState.focused) ||
-          states.contains(WidgetState.pressed)) {
-        return Theme.of(context).colorScheme.primary;
-      }
-      if (isActive) return Theme.of(context).colorScheme.primary;
-      return widget.scrolled || Get.currentRoute != AppRoutes.home
-          ? Colors.black
-          : Theme.of(context).colorScheme.onPrimary;
-    }
-
-    return TextButton(
-      onPressed: () => Get.toNamed(route),
-      style: ButtonStyle(
-        foregroundColor: WidgetStateProperty.resolveWith(resolveColor),
-        overlayColor: WidgetStateProperty.all(Colors.transparent),
-        padding: WidgetStateProperty.all(
-          const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        ),
-      ),
-      child: Text(
-        title.titleCase,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: isActive ? FontWeight.w700 : FontWeight.w600,
-          letterSpacing: 0.4,
-        ),
-      ),
-    );
-  }
-
-  Widget _iconButton({
-    required IconData icon,
-    required String route,
-    String? tooltip,
-    String? badge,
-    required VoidCallback onPressed,
-  }) {
-    final isActive = Get.currentRoute.contains(route);
-
-    Color resolveColor(Set<WidgetState> states) {
-      if (states.contains(WidgetState.hovered) ||
-          states.contains(WidgetState.focused) ||
-          states.contains(WidgetState.pressed)) {
-        return Theme.of(context).colorScheme.primary;
-      }
-      if (isActive) return Theme.of(context).colorScheme.primary;
-      return widget.scrolled || Get.currentRoute != AppRoutes.home
-          ? Colors.black
-          : Theme.of(context).colorScheme.onPrimary;
-    }
-
-    return IconButton(
-      onPressed: onPressed,
-      tooltip: tooltip,
-      icon: Builder(
-        builder: (context) {
-          Widget iconWidget = Icon(icon, size: 22);
-          if (badge != null) {
-            iconWidget = Badge(
-              backgroundColor: const Color(0xFFD64545),
-              label: Text(badge, style: const TextStyle(fontSize: 10)),
-              child: iconWidget,
-            );
-          }
-          return iconWidget;
-        },
-      ),
-      style: ButtonStyle(
-        foregroundColor: WidgetStateProperty.resolveWith(resolveColor),
-        overlayColor: WidgetStateProperty.all(Colors.transparent),
-        padding: WidgetStateProperty.all(const EdgeInsets.all(8)),
       ),
     );
   }
 }
 
+// ── Private helpers ───────────────────────────────────────────────────────────
+
+Widget _iconButton({
+  required IconData icon,
+  required String tooltip,
+  required Color color,
+  required VoidCallback onPressed,
+}) =>
+    IconButton(
+      icon: Icon(icon, color: color),
+      tooltip: tooltip,
+      onPressed: onPressed,
+      splashRadius: 20,
+    );
+
 // ─────────────────────────────────────────────────────────────────────────────
-// _UserAvatar — popup menu with profile, orders, wishlist, sign-out
+// _NavLink
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _NavLink extends StatefulWidget {
+  const _NavLink({
+    required this.label,
+    required this.route,
+    required this.fg,
+  });
+
+  final String label;
+  final String route;
+  final Color fg;
+
+  @override
+  State<_NavLink> createState() => _NavLinkState();
+}
+
+class _NavLinkState extends State<_NavLink> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: () => Get.toNamed(widget.route),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 150),
+              style: TextStyle(
+                fontFamily: 'IBMPlexSansArabic',
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.2,
+                color: _hovered
+                    ? AppColors.marcatGold
+                    : widget.fg.withOpacity(0.9),
+              ),
+              child: Text(widget.label.toUpperCase()),
+            ),
+          ),
+        ),
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _CartIcon
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CartIcon extends StatelessWidget {
+  const _CartIcon({
+    required this.count,
+    required this.color,
+    required this.onPressed,
+  });
+
+  final String? count;
+  final Color color;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => Stack(
+        clipBehavior: Clip.none,
+        children: [
+          IconButton(
+            icon: Icon(Icons.shopping_bag_outlined, color: color),
+            tooltip: 'Cart',
+            onPressed: onPressed,
+            splashRadius: 20,
+          ),
+          if (count != null)
+            Positioned(
+              top: 6,
+              right: 4,
+              child: IgnorePointer(
+                child: Container(
+                  padding: const EdgeInsets.all(3),
+                  constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                  decoration: BoxDecoration(
+                    color: AppColors.marcatGold,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    count!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _UserAvatar
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _UserAvatar extends StatelessWidget {
+  const _UserAvatar({required this.user, required this.fg});
+
   final UserModel user;
   final Color fg;
 
-  const _UserAvatar({required this.user, required this.fg});
-
-  static String _initials(String firstName, String lastName) {
-    final parts = '$firstName $lastName'.trim().split(' ');
-    return parts
-        .where((w) => w.isNotEmpty)
-        .map((w) => w[0])
-        .take(2)
-        .join()
-        .toUpperCase();
+  String get _initials {
+    final f = user.firstName.isNotEmpty ? user.firstName[0].toUpperCase() : '';
+    final l = user.lastName.isNotEmpty ? user.lastName[0].toUpperCase() : '';
+    return '$f$l'.isNotEmpty ? '$f$l' : 'U';
   }
 
   @override
-  Widget build(BuildContext context) {
-    final initials = _initials(user.firstName, user.lastName);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: PopupMenuButton<int>(
-        offset: const Offset(0, 56),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        elevation: 12,
-        shadowColor: Colors.black.withOpacity(0.14),
-        color: Colors.white,
-        itemBuilder: (_) => [
-          // Profile header (non-interactive)
-          PopupMenuItem(
-            enabled: false,
-            padding: EdgeInsets.zero,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${user.firstName} ${user.lastName}',
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: () => Get.toNamed(AppRoutes.profile),
+        child: Tooltip(
+          message: 'Profile',
+          child: CircleAvatar(
+            radius: 17,
+            backgroundColor: AppColors.marcatGold.withOpacity(0.2),
+            backgroundImage: user.avatarUrl != null
+                ? NetworkImage(user.avatarUrl!)
+                : null,
+            child: user.avatarUrl == null
+                ? Text(
+                    _initials,
                     style: TextStyle(
-                      fontSize: 15,
+                      fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: Theme.of(context).colorScheme.primary,
+                      color: fg,
                     ),
-                  ),
-                  if (user.phone != null)
-                    Text(
-                      user.phone!,
-                      style: const TextStyle(
-                          fontSize: 12, color: Color(0xFF6B7C93)),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                ],
-              ),
-            ),
-          ),
-          const PopupMenuDivider(height: 1),
-          _menuItem(1, Icons.person_outline_rounded, 'Edit Profile'),
-          _menuItem(2, Icons.receipt_long_outlined, 'My Orders'),
-          _menuItem(3, Icons.favorite_outline_rounded, 'Wishlist'),
-          const PopupMenuDivider(height: 1),
-          _menuItem(4, Icons.logout_rounded, 'Sign Out',
-              color: const Color(0xFFDC2626)),
-        ],
-        onSelected: (v) {
-          switch (v) {
-            case 1:
-              Get.toNamed(AppRoutes.profile);
-            case 2:
-              Get.toNamed(AppRoutes.orders);
-            case 3:
-              Get.toNamed(AppRoutes.wishlist);
-            case 4:
-              Get.find<AuthController>().signOut();
-          }
-        },
-        child: Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: fg.withOpacity(0.25), width: 2),
-            color: Theme.of(context).colorScheme.primary,
-            image: user.avatarUrl != null
-                ? DecorationImage(
-                    image: NetworkImage(user.avatarUrl!),
-                    fit: BoxFit.cover,
                   )
                 : null,
           ),
-          // Show initials only when there is NO avatar image
-          child: user.avatarUrl == null
-              ? Center(
-                  child: Text(
-                    initials,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                )
-              : null,
         ),
-      ),
-    );
-  }
-
-  PopupMenuItem<int> _menuItem(
-    int value,
-    IconData icon,
-    String label, {
-    Color? color,
-  }) {
-    final c = color ?? Theme.of(Get.context!).colorScheme.primary;
-    return PopupMenuItem(
-      value: value,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: c),
-          const SizedBox(width: 12),
-          Text(
-            label,
-            style:
-                TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: c),
-          ),
-        ],
-      ),
-    );
-  }
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -479,38 +385,33 @@ class _UserAvatar extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SignInButton extends StatelessWidget {
+  const _SignInButton({required this.isDesktop, required this.color});
+
   final bool isDesktop;
   final Color color;
 
-  const _SignInButton({required this.isDesktop, required this.color});
-
   @override
-  Widget build(BuildContext context) => isDesktop
-      ? TextButton.icon(
-          onPressed: () => Get.toNamed(AppRoutes.login),
-          style: TextButton.styleFrom(
-            foregroundColor: color,
-            overlayColor: color.withOpacity(0.08),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            textStyle: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.3,
-            ),
+  Widget build(BuildContext context) {
+    if (isDesktop) {
+      return TextButton(
+        onPressed: () => Get.toNamed(AppRoutes.login),
+        child: Text(
+          'Sign In',
+          style: TextStyle(
+            fontFamily: 'IBMPlexSansArabic',
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+            color: color,
           ),
-          icon: Icon(Icons.person_outline_rounded, size: 18, color: color),
-          label: const Text('Sign In'),
-        )
-      : IconButton(
-          onPressed: () => Get.toNamed(AppRoutes.login),
-          tooltip: 'Sign In',
-          icon: Icon(Icons.person_outline_rounded, size: 22, color: color),
-          style: IconButton.styleFrom(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            padding: const EdgeInsets.all(8),
-          ),
-        );
+        ),
+      );
+    }
+    return _iconButton(
+      icon: Icons.person_outline_rounded,
+      tooltip: 'Sign In',
+      color: color,
+      onPressed: () => Get.toNamed(AppRoutes.login),
+    );
+  }
 }

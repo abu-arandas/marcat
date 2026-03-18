@@ -1,9 +1,11 @@
 // lib/views/customer/scaffold/widgets/body.dart
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bootstrap5/flutter_bootstrap5.dart';
 import 'package:get/get.dart';
 
+import 'package:marcat/core/constants/app_colors.dart';
 import 'package:marcat/core/router/app_router.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -13,11 +15,6 @@ import 'package:marcat/core/router/app_router.dart';
 /// Body content wrapper for customer-facing pages.
 /// Renders an optional hero banner, the page content, and the site footer.
 class ClientBody extends StatelessWidget {
-  final String pageName;
-  final String? pageImage;
-  final Widget body;
-  final ScrollController scrollController;
-
   const ClientBody({
     super.key,
     required this.pageName,
@@ -26,6 +23,11 @@ class ClientBody extends StatelessWidget {
     required this.scrollController,
   });
 
+  final String pageName;
+  final String? pageImage;
+  final Widget body;
+  final ScrollController scrollController;
+
   bool get _showBanner => pageImage != null && pageImage!.isNotEmpty;
 
   @override
@@ -33,14 +35,9 @@ class ClientBody extends StatelessWidget {
         controller: scrollController,
         child: Column(
           children: [
-            // ── Hero / page banner ─────────────────────────────────────
             if (_showBanner)
               _PageBanner(pageName: pageName, imageUrl: pageImage!),
-
-            // ── Page content ───────────────────────────────────────────
             body,
-
-            // ── Site footer ────────────────────────────────────────────
             const _SiteFooter(),
           ],
         ),
@@ -64,19 +61,21 @@ class _PageBanner extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.network(
-              imageUrl,
+            CachedNetworkImage(
+              imageUrl: imageUrl,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  Container(color: const Color(0xFF1A1A2E)),
+              placeholder: (_, __) =>
+                  const ColoredBox(color: AppColors.marcatNavy),
+              errorWidget: (_, __, ___) =>
+                  const ColoredBox(color: AppColors.marcatNavy),
             ),
-            Container(
+            DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withOpacity(0.3),
+                    Colors.black.withOpacity(0.25),
                     Colors.black.withOpacity(0.55),
                   ],
                 ),
@@ -86,7 +85,7 @@ class _PageBanner extends StatelessWidget {
               child: Text(
                 pageName.toUpperCase(),
                 style: const TextStyle(
-                  fontFamily: 'PlayfairDisplay', // ✅ correct font name
+                  fontFamily: 'PlayfairDisplay',
                   color: Colors.white,
                   fontSize: 32,
                   fontWeight: FontWeight.w700,
@@ -107,127 +106,133 @@ class _SiteFooter extends StatelessWidget {
   const _SiteFooter();
 
   @override
-  Widget build(BuildContext context) => Container(
-        color: const Color(0xFF0D1117),
-        padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
-        child: FB5Container(
-          child: FB5Row(
-            children: [
-              // Brand column
-              FB5Col(
-                classNames: 'col-lg-3 col-md-6 col-sm-12',
-                child: _FooterColumn(
-                  heading: 'MARCAT',
-                  headingIsLogo: true,
-                  links: [
-                    _FooterLink(
-                      label: 'About Us',
-                      onTap: () => Get.toNamed(AppRoutes.about),
+  Widget build(BuildContext context) => ColoredBox(
+        color: AppColors.footerBg,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 56, horizontal: 24),
+          child: FB5Container(
+            child: Column(
+              children: [
+                FB5Row(
+                  children: [
+                    // ── Brand ──────────────────────────────────────────────
+                    FB5Col(
+                      classNames: 'col-lg-3 col-md-6 col-12',
+                      child: _FooterColumn(
+                        heading: 'MARCAT',
+                        isLogo: true,
+                        links: [
+                          _FooterLink(
+                            label: 'About Us',
+                            onTap: () => Get.toNamed(AppRoutes.about),
+                          ),
+                          _FooterLink(
+                            label: 'Contact',
+                            onTap: () => Get.toNamed(AppRoutes.contact),
+                          ),
+                        ],
+                      ),
                     ),
-                    _FooterLink(
-                      label: 'Contact',
-                      onTap: () => Get.toNamed(AppRoutes.contact),
-                    ),
-                  ],
-                ),
-              ),
 
-              FB5Col(
-                classNames: 'col-lg-3 col-md-6 col-sm-12',
-                child: _FooterColumn(
-                  heading: 'Shop',
-                  links: [
-                    _FooterLink(
-                      label: 'All Products',
-                      onTap: () => Get.toNamed(AppRoutes.shop),
+                    // ── Shop ───────────────────────────────────────────────
+                    FB5Col(
+                      classNames: 'col-lg-3 col-md-6 col-12',
+                      child: _FooterColumn(
+                        heading: 'Shop',
+                        links: [
+                          _FooterLink(
+                            label: 'All Products',
+                            onTap: () => Get.toNamed(AppRoutes.shop),
+                          ),
+                          _FooterLink(
+                            label: 'New Arrivals',
+                            onTap: () => Get.toNamed(AppRoutes.shopNew),
+                          ),
+                          _FooterLink(
+                            label: 'Sale',
+                            onTap: () => Get.toNamed(AppRoutes.shopSale),
+                          ),
+                        ],
+                      ),
                     ),
-                    _FooterLink(
-                      label: 'Men',
-                      onTap: () => Get.toNamed(AppRoutes.shopMen),
-                    ),
-                    _FooterLink(
-                      label: 'Kids',
-                      onTap: () => Get.toNamed(AppRoutes.shopKids),
-                    ),
-                    _FooterLink(
-                      label: 'Sale',
-                      onTap: () => Get.toNamed(AppRoutes.shopSale),
-                    ),
-                    _FooterLink(
-                      label: 'New Arrivals',
-                      onTap: () => Get.toNamed(AppRoutes.shopNew),
-                    ),
-                  ],
-                ),
-              ),
 
-              // Account links
-              FB5Col(
-                classNames: 'col-lg-3 col-md-6 col-sm-12',
-                child: _FooterColumn(
-                  heading: 'Account',
-                  links: [
-                    _FooterLink(
-                      label: 'My Orders',
-                      onTap: () => Get.toNamed(AppRoutes.orders),
+                    // ── Account ────────────────────────────────────────────
+                    FB5Col(
+                      classNames: 'col-lg-3 col-md-6 col-12',
+                      child: _FooterColumn(
+                        heading: 'Account',
+                        links: [
+                          _FooterLink(
+                            label: 'My Orders',
+                            onTap: () => Get.toNamed(AppRoutes.orders),
+                          ),
+                          _FooterLink(
+                            label: 'Wishlist',
+                            onTap: () => Get.toNamed(AppRoutes.wishlist),
+                          ),
+                          _FooterLink(
+                            label: 'Profile',
+                            onTap: () => Get.toNamed(AppRoutes.profile),
+                          ),
+                        ],
+                      ),
                     ),
-                    _FooterLink(
-                      label: 'Wishlist',
-                      onTap: () => Get.toNamed(AppRoutes.wishlist),
-                    ),
-                    _FooterLink(
-                      label: 'Edit Profile',
-                      onTap: () => Get.toNamed(AppRoutes.profile),
-                    ),
-                    _FooterLink(
-                      label: 'Sign In',
-                      onTap: () => Get.toNamed(AppRoutes.login),
-                    ),
-                  ],
-                ),
-              ),
 
-              // Help links
-              FB5Col(
-                classNames: 'col-lg-3 col-md-6 col-sm-12',
-                child: _FooterColumn(
-                  heading: 'Help',
-                  links: [
-                    _FooterLink(
-                      label: 'Size Guide',
-                      onTap: () => Get.toNamed(AppRoutes.sizeGuide),
-                    ),
-                    _FooterLink(
-                      label: 'Returns & Exchanges',
-                      onTap: () => Get.toNamed(AppRoutes.returns),
-                    ),
-                    _FooterLink(
-                      label: 'Contact Us',
-                      onTap: () => Get.toNamed(AppRoutes.contact),
+                    // ── Contact ────────────────────────────────────────────
+                    FB5Col(
+                      classNames: 'col-lg-3 col-md-6 col-12',
+                      child: _FooterColumn(
+                        heading: 'Contact',
+                        links: [
+                          _FooterLink(
+                            label: '+962 79 156 8798',
+                            onTap: null,
+                          ),
+                          _FooterLink(
+                            label: 'hello@marcat.jo',
+                            onTap: null,
+                          ),
+                          _FooterLink(
+                            label: 'Abdali Blvd, Amman',
+                            onTap: null,
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 40),
+                const Divider(color: Colors.white12),
+                const SizedBox(height: 20),
+                const Text(
+                  '© 2024 MARCAT. All rights reserved.',
+                  style: TextStyle(
+                    fontFamily: 'IBMPlexSansArabic',
+                    fontSize: 12,
+                    color: Colors.white38,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Helpers
+// _FooterColumn
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _FooterColumn extends StatelessWidget {
   const _FooterColumn({
     required this.heading,
     required this.links,
-    this.headingIsLogo = false,
+    this.isLogo = false,
   });
 
   final String heading;
   final List<_FooterLink> links;
-  final bool headingIsLogo;
+  final bool isLogo;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -235,16 +240,28 @@ class _FooterColumn extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              heading,
-              style: TextStyle(
-                fontFamily: headingIsLogo ? 'PlayfairDisplay' : null,
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: headingIsLogo ? 20 : 13,
-                letterSpacing: headingIsLogo ? 3 : 1.5,
+            if (isLogo)
+              Text(
+                heading,
+                style: const TextStyle(
+                  fontFamily: 'PlayfairDisplay',
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.marcatGold,
+                  letterSpacing: 2,
+                ),
+              )
+            else
+              Text(
+                heading.toUpperCase(),
+                style: const TextStyle(
+                  fontFamily: 'IBMPlexSansArabic',
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white60,
+                  letterSpacing: 2,
+                ),
               ),
-            ),
             const SizedBox(height: 16),
             ...links,
           ],
@@ -256,19 +273,20 @@ class _FooterLink extends StatelessWidget {
   const _FooterLink({required this.label, required this.onTap});
 
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 5),
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: GestureDetector(
+          onTap: onTap,
           child: Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFF9CA3AF),
-              fontSize: 13,
-              height: 1.5,
+            style: TextStyle(
+              fontFamily: 'IBMPlexSansArabic',
+              fontSize: 14,
+              color: onTap != null ? Colors.white70 : Colors.white38,
+              height: 1.4,
             ),
           ),
         ),

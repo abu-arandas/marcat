@@ -3,7 +3,7 @@
 // ─── public.user_role ────────────────────────────────────────────────────────
 enum UserRole {
   admin,
-  store_manager,
+  storeManager,
   salesperson,
   driver,
   customer,
@@ -82,7 +82,7 @@ extension SaleStatusX on SaleStatus {
 // ─── public.delivery_status ──────────────────────────────────────────────────
 enum DeliveryStatus {
   pending,
-  out_for_delivery,
+  outForDelivery,
   delivered,
   failed,
 }

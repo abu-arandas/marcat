@@ -2,16 +2,31 @@
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bootstrap5/flutter_bootstrap5.dart';
 import 'package:get/get.dart';
+
 import 'package:marcat/controllers/cart_controller.dart';
+import 'package:marcat/core/constants/app_colors.dart';
+import 'package:marcat/core/constants/app_text_styles.dart';
+import 'package:marcat/core/extensions/currency_extensions.dart';
 import 'package:marcat/models/cart_item_model.dart';
+import 'package:marcat/core/router/app_router.dart';
 
 import 'scaffold/app_scaffold.dart';
-import 'shared/brand.dart';
 import 'shared/empty_state.dart';
 import 'shared/marcat_buttons.dart';
 import 'shared/section_header.dart';
-import 'package:marcat/core/router/app_router.dart';
+
+// ── Local constants ────────────────────────────────────────────────────────────
+const _kNavy = AppColors.marcatNavy;
+const _kCream = AppColors.marcatCream;
+const _kSlate = AppColors.marcatSlate;
+const _kRed = AppColors.saleRed;
+const _kBorder = AppColors.borderLight;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CartPage
+// ─────────────────────────────────────────────────────────────────────────────
 
 class CartPage extends StatelessWidget {
   const CartPage({super.key});
@@ -25,6 +40,10 @@ class CartPage extends StatelessWidget {
       );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// _CartBody
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _CartBody extends StatelessWidget {
   const _CartBody();
 
@@ -33,11 +52,9 @@ class _CartBody extends StatelessWidget {
     return GetBuilder<CartController>(
       builder: (ctrl) {
         if (ctrl.isCartLoading) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 80),
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 80),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
           );
         }
 
@@ -49,24 +66,28 @@ class _CartBody extends StatelessWidget {
               icon: Icons.shopping_bag_outlined,
               title: 'Your Bag Is Empty',
               subtitle:
-                  'Looks like you haven\'t added anything yet.\nStart shopping to fill it up.',
+                  "Looks like you haven't added anything yet.\nStart shopping to fill it up.",
               actionLabel: 'Continue Shopping',
               onAction: () => Get.toNamed(AppRoutes.shop),
             );
           }
 
-          return Container(
-            constraints: const BoxConstraints(maxWidth: 1140),
-            margin: const EdgeInsets.symmetric(horizontal: 16),
+          return FB5Container(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 40),
               child: isDesktop
                   ? Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(flex: 6, child: _CartItemsList(ctrl: ctrl)),
+                        Expanded(
+                          flex: 6,
+                          child: _CartItemsList(ctrl: ctrl),
+                        ),
                         const SizedBox(width: 40),
-                        SizedBox(width: 360, child: _OrderSummary(ctrl: ctrl)),
+                        SizedBox(
+                          width: 360,
+                          child: _OrderSummary(ctrl: ctrl),
+                        ),
                       ],
                     )
                   : Column(
@@ -85,11 +106,14 @@ class _CartBody extends StatelessWidget {
   }
 }
 
-// ── Cart Items List ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// _CartItemsList
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _CartItemsList extends StatelessWidget {
-  final CartController ctrl;
   const _CartItemsList({required this.ctrl});
+
+  final CartController ctrl;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -100,19 +124,27 @@ class _CartItemsList extends StatelessWidget {
             title: 'Your Items',
             action: TextButton(
               onPressed: () => _showClearConfirm(context),
-              style: TextButton.styleFrom(foregroundColor: kRed),
-              child: const Text('Clear All',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              style: TextButton.styleFrom(foregroundColor: _kRed),
+              child: const Text(
+                'Clear All',
+                style: TextStyle(
+                  fontFamily: 'IBMPlexSansArabic',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 24),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: ctrl.items.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 16),
-            itemBuilder: (context, index) =>
-                _CartItemRow(item: ctrl.items[index], ctrl: ctrl),
+          Obx(
+            () => ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: ctrl.items.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 16),
+              itemBuilder: (_, i) =>
+                  _CartItemRow(item: ctrl.items[i], ctrl: ctrl),
+            ),
           ),
         ],
       );
@@ -120,60 +152,101 @@ class _CartItemsList extends StatelessWidget {
   void _showClearConfirm(BuildContext context) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        title: const Text('Clear Cart?',
-            style: TextStyle(
-                fontFamily: 'Playfair Display',
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: kNavy)),
-        content: const Text(
-            'This will remove all items from your bag. This action cannot be undone.',
-            style: TextStyle(color: kSlate, height: 1.5)),
-        actions: [
-          TextButton(
-              onPressed: () => Get.back(),
-              child: const Text('Cancel',
-                  style:
-                      TextStyle(color: kSlate, fontWeight: FontWeight.w600))),
-          ElevatedButton(
-            onPressed: () {
-              ctrl.clearCart();
-              Get.back();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: kRed,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text('Clear',
-                style: TextStyle(fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
+      builder: (_) => _ClearCartDialog(ctrl: ctrl),
     );
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// _ClearCartDialog
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ClearCartDialog extends StatelessWidget {
+  const _ClearCartDialog({required this.ctrl});
+
+  final CartController ctrl;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      title: const Text(
+        'Clear Cart?',
+        style: TextStyle(
+          fontFamily: 'PlayfairDisplay',
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          color: _kNavy,
+        ),
+      ),
+      content: const Text(
+        'This will remove all items from your bag. This action cannot be undone.',
+        style: TextStyle(
+          fontFamily: 'IBMPlexSansArabic',
+          color: _kSlate,
+          height: 1.5,
+          fontSize: 14,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Get.back(),
+          child: const Text(
+            'Cancel',
+            style: TextStyle(
+              fontFamily: 'IBMPlexSansArabic',
+              color: _kSlate,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            ctrl.clearCart();
+            Get.back();
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _kRed,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          child: const Text(
+            'Clear',
+            style: TextStyle(
+              fontFamily: 'IBMPlexSansArabic',
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _CartItemRow
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _CartItemRow extends StatelessWidget {
+  const _CartItemRow({required this.item, required this.ctrl});
+
   final CartItemModel item;
   final CartController ctrl;
-  const _CartItemRow({required this.item, required this.ctrl});
 
   @override
   Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: kBorderColor),
+          border: Border.all(color: _kBorder),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Thumbnail ─────────────────────────────────────────────────
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: SizedBox(
@@ -183,383 +256,410 @@ class _CartItemRow extends StatelessWidget {
                     ? CachedNetworkImage(
                         imageUrl: item.primaryImageUrl!,
                         fit: BoxFit.cover,
-                        placeholder: (_, __) => Container(color: kCream),
+                        placeholder: (_, __) =>
+                            const ColoredBox(color: _kCream),
+                        errorWidget: (_, __, ___) =>
+                            const ColoredBox(color: _kCream),
                       )
-                    : Container(
-                        color: kCream,
-                        child: const Icon(Icons.image_outlined, color: kSlate)),
+                    : const ColoredBox(
+                        color: _kCream,
+                        child: Icon(Icons.image_not_supported_outlined,
+                            color: _kSlate),
+                      ),
               ),
             ),
+
             const SizedBox(width: 16),
+
+            // ── Details ───────────────────────────────────────────────────
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(item.productName,
-                      style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: kNavy)),
-                  const SizedBox(height: 4),
-                  Text('Size: ${item.sizeLabel}',
-                      style: const TextStyle(fontSize: 12, color: kSlate)),
+                  Text(
+                    item.productName,
+                    style: AppTextStyles.titleSmall,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      _Tag(item.colorName),
+                      ...[
+                        const SizedBox(width: 6),
+                        _Tag(item.sizeLabel),
+                      ],
+                    ],
+                  ),
                   const SizedBox(height: 12),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _QtyStepper(
-                        qty: item.quantity,
-                        onDecrement: () => ctrl.updateQuantity(
-                          item.productSizeId,
-                          item.colorId,
-                          item.quantity - 1,
-                        ),
-                        onIncrement: () => ctrl.updateQuantity(
-                          item.productSizeId,
-                          item.colorId,
-                          item.quantity + 1,
-                        ),
-                      ),
+                      // Quantity stepper
+                      _QuantityStepper(item: item, ctrl: ctrl),
+                      const Spacer(),
+                      // Line total
                       Text(
-                        'JOD ${(item.unitPrice * item.quantity).toStringAsFixed(2)}',
-                        style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: kNavy),
+                        (item.unitPrice * item.quantity).toJOD(),
+                        style: AppTextStyles.priceMedium,
                       ),
                     ],
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+
+            // ── Remove ────────────────────────────────────────────────────
+            const SizedBox(width: 4),
             IconButton(
+              icon: const Icon(Icons.close_rounded, size: 18),
+              color: _kSlate,
+              tooltip: 'Remove',
               onPressed: () =>
                   ctrl.removeItem(item.productSizeId, item.colorId),
-              icon: const Icon(Icons.close_rounded, size: 18, color: kSlate),
-              style: IconButton.styleFrom(
-                backgroundColor: kCream,
-                padding: const EdgeInsets.all(6),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6)),
-              ),
+              splashRadius: 18,
             ),
           ],
         ),
       );
 }
 
-class _QtyStepper extends StatelessWidget {
-  final int qty;
-  final VoidCallback onDecrement;
-  final VoidCallback onIncrement;
-  const _QtyStepper(
-      {required this.qty,
-      required this.onDecrement,
-      required this.onIncrement});
+// ─────────────────────────────────────────────────────────────────────────────
+// _QuantityStepper
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _QuantityStepper extends StatelessWidget {
+  const _QuantityStepper({required this.item, required this.ctrl});
+
+  final CartItemModel item;
+  final CartController ctrl;
 
   @override
   Widget build(BuildContext context) => Container(
         decoration: BoxDecoration(
-          border: Border.all(color: kBorderColor),
+          border: Border.all(color: _kBorder),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _StepBtn(icon: Icons.remove_rounded, onTap: onDecrement),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Text('$qty',
-                  style: const TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w700, color: kNavy)),
+            _StepBtn(
+              icon: Icons.remove,
+              onTap: item.quantity > 1
+                  ? () => ctrl.updateQuantity(
+                      item.productSizeId, item.colorId, item.quantity - 1)
+                  : null,
             ),
-            _StepBtn(icon: Icons.add_rounded, onTap: onIncrement),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                '${item.quantity}',
+                style: AppTextStyles.labelLarge,
+              ),
+            ),
+            _StepBtn(
+              icon: Icons.add,
+              onTap: () => ctrl.updateQuantity(
+                  item.productSizeId, item.colorId, item.quantity + 1),
+            ),
           ],
         ),
       );
 }
 
 class _StepBtn extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
   const _StepBtn({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) => GestureDetector(
         onTap: onTap,
         child: Container(
-          width: 34,
-          height: 34,
-          color: Colors.transparent,
-          child: Icon(icon, size: 16, color: kNavy),
+          width: 32,
+          height: 32,
+          alignment: Alignment.center,
+          child: Icon(
+            icon,
+            size: 16,
+            color: onTap != null ? _kNavy : _kBorder,
+          ),
         ),
       );
 }
 
-// ── Order Summary ──────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// _Tag  (color / size chip)
+// ─────────────────────────────────────────────────────────────────────────────
 
-class _OrderSummary extends StatefulWidget {
-  final CartController ctrl;
-  const _OrderSummary({required this.ctrl});
+class _Tag extends StatelessWidget {
+  const _Tag(this.label);
 
-  @override
-  State<_OrderSummary> createState() => _OrderSummaryState();
-}
-
-class _OrderSummaryState extends State<_OrderSummary> {
-  final _couponCtrl = TextEditingController();
-  bool _applyingCoupon = false;
-  String? _couponError;
-
-  @override
-  void dispose() {
-    _couponCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _applyCoupon() async {
-    final code = _couponCtrl.text.trim();
-    if (code.isEmpty) return;
-    setState(() {
-      _applyingCoupon = true;
-      _couponError = null;
-    });
-    try {
-      await widget.ctrl.applyCoupon(code);
-    } catch (e) {
-      setState(() => _couponError = 'Invalid or expired coupon code.');
-    } finally {
-      setState(() => _applyingCoupon = false);
-    }
-  }
+  final String label;
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(28),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: _kCream,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: _kBorder),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'IBMPlexSansArabic',
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            color: _kNavy,
+          ),
+        ),
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _OrderSummary
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _OrderSummary extends StatelessWidget {
+  const _OrderSummary({required this.ctrl});
+
+  final CartController ctrl;
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final subtotal = ctrl.subtotal;
+      final discount = ctrl.discountTotal;
+      final total = ctrl.grandTotal;
+      final offer = ctrl.appliedOffer.value;
+
+      return Container(
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: kBorderColor),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _kBorder),
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('Order Summary',
-                style: TextStyle(
-                    fontFamily: 'Playfair Display',
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: kNavy)),
-            const SizedBox(height: 24),
-            Obx(() => _SummaryRow(
-                  label: 'Subtotal',
-                  value: 'JOD ${widget.ctrl.subtotal.toStringAsFixed(2)}',
-                )),
-            const SizedBox(height: 10),
-            Obx(() {
-              final offer = widget.ctrl.appliedOffer.value;
-              if (offer == null) return const SizedBox.shrink();
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+            const Text(
+              'ORDER SUMMARY',
+              style: TextStyle(
+                fontFamily: 'IBMPlexSansArabic',
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 2,
+                color: _kSlate,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Subtotal
+            _SummaryRow(label: 'Subtotal', value: subtotal.toJOD()),
+            if (discount > 0) ...[
+              const SizedBox(height: 8),
+              _SummaryRow(
+                label: 'Discount',
+                value: '-${discount.toJOD()}',
+                valueColor: AppColors.successGreen,
+              ),
+            ],
+            if (offer != null) ...[
+              const SizedBox(height: 4),
+              Row(
                 children: [
-                  _SummaryRow(
-                    label: '${offer.offerName} (Coupon)',
-                    value:
-                        '- JOD ${widget.ctrl.discountTotal.toStringAsFixed(2)}',
-                    accent: true,
+                  const Icon(Icons.local_offer_outlined,
+                      size: 13, color: AppColors.marcatGold),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      offer.offerId.toString(),
+                      style: const TextStyle(
+                        fontFamily: 'IBMPlexMono',
+                        fontSize: 11,
+                        color: AppColors.marcatGold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  const SizedBox(height: 10),
+                  GestureDetector(
+                    onTap: ctrl.removeCoupon,
+                    child: const Icon(Icons.close_rounded,
+                        size: 14, color: _kSlate),
+                  ),
                 ],
-              );
-            }),
+              ),
+            ],
+            const SizedBox(height: 8),
+            _SummaryRow(label: 'Shipping', value: 'Free'),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Divider(color: _kBorder),
+            ),
             _SummaryRow(
-                label: 'Shipping',
-                value: 'Calculated at checkout',
-                muted: true),
-            const SizedBox(height: 16),
-            const Divider(color: kBorderColor),
-            const SizedBox(height: 16),
-            Obx(() => Row(children: [
-                  const Text('Total',
-                      style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: kNavy)),
-                  const Spacer(),
-                  Text(
-                    'JOD ${widget.ctrl.grandTotal.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                        fontFamily: 'Playfair Display',
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: kNavy),
-                  ),
-                ])),
-            const SizedBox(height: 24),
-            Obx(() {
-              if (widget.ctrl.appliedOffer.value == null) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Text('Have a coupon?',
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: kSlate)),
-                    const SizedBox(height: 8),
-                    Row(children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _couponCtrl,
-                          textCapitalization: TextCapitalization.characters,
-                          style: const TextStyle(fontSize: 13, color: kNavy),
-                          decoration: InputDecoration(
-                            hintText: 'Enter code',
-                            hintStyle:
-                                const TextStyle(color: kSlate, fontSize: 13),
-                            errorText: _couponError,
-                            filled: true,
-                            fillColor: kCream,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide.none,
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 12),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      SizedBox(
-                        height: 44,
-                        child: ElevatedButton(
-                          onPressed: _applyingCoupon ? null : _applyCoupon,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: kNavy,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8)),
-                          ),
-                          child: _applyingCoupon
-                              ? const SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white))
-                              : const Text('Apply',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13)),
-                        ),
-                      ),
-                    ]),
-                    const SizedBox(height: 20),
-                  ],
-                );
-              } else {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 20),
-                  child: Row(children: [
-                    const Icon(Icons.check_circle_rounded,
-                        size: 16, color: Colors.green),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        widget.ctrl.appliedOffer.value!.offerName,
-                        style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.green),
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: widget.ctrl.removeCoupon,
-                      child: const Icon(Icons.close_rounded,
-                          size: 16, color: kSlate),
-                    ),
-                  ]),
-                );
-              }
-            }),
+              label: 'Total',
+              value: total.toJOD(),
+              bold: true,
+            ),
+
+            // Promo code
+            const SizedBox(height: 20),
+            _PromoCodeField(ctrl: ctrl),
+
+            const SizedBox(height: 20),
+
+            // Checkout CTA
             PrimaryButton(
               label: 'Proceed to Checkout',
               onPressed: () => Get.toNamed(AppRoutes.checkout),
               icon: Icons.lock_outline_rounded,
             ),
+
             const SizedBox(height: 12),
-            Center(
-              child: TextButton(
-                onPressed: () => Get.toNamed(AppRoutes.shop),
-                style: TextButton.styleFrom(foregroundColor: kSlate),
-                child: const Text('Continue Shopping',
-                    style:
-                        TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            const Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.security_outlined, size: 13, color: _kSlate),
+                  SizedBox(width: 4),
+                  Text(
+                    'Secure Checkout',
+                    style: TextStyle(
+                      fontFamily: 'IBMPlexSansArabic',
+                      fontSize: 11,
+                      color: _kSlate,
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 8),
-            const Divider(color: kBorderColor),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: const [
-                _TrustBadge(icon: Icons.lock_outline_rounded, label: 'Secure'),
-                _TrustBadge(
-                    icon: Icons.local_shipping_outlined,
-                    label: 'Free Shipping'),
-                _TrustBadge(icon: Icons.replay_outlined, label: 'Easy Returns'),
-              ],
             ),
           ],
         ),
       );
+    });
+  }
 }
 
-class _SummaryRow extends StatelessWidget {
-  final String label, value;
-  final bool accent;
-  final bool muted;
-  const _SummaryRow(
-      {required this.label,
-      required this.value,
-      this.accent = false,
-      this.muted = false});
+// ─────────────────────────────────────────────────────────────────────────────
+// _PromoCodeField
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _PromoCodeField extends StatefulWidget {
+  const _PromoCodeField({required this.ctrl});
+
+  final CartController ctrl;
+
+  @override
+  State<_PromoCodeField> createState() => _PromoCodeFieldState();
+}
+
+class _PromoCodeFieldState extends State<_PromoCodeField> {
+  final _codeCtrl = TextEditingController();
+  bool _applying = false;
+
+  @override
+  void dispose() {
+    _codeCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _apply() async {
+    final code = _codeCtrl.text.trim();
+    if (code.isEmpty) return;
+    setState(() => _applying = true);
+    try {
+      await widget.ctrl.applyCoupon(code);
+      _codeCtrl.clear();
+    } finally {
+      if (mounted) setState(() => _applying = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) => Row(
         children: [
-          Text(label,
-              style: TextStyle(
+          Expanded(
+            child: TextFormField(
+              controller: _codeCtrl,
+              textCapitalization: TextCapitalization.characters,
+              style: const TextStyle(
+                fontFamily: 'IBMPlexMono',
+                fontSize: 13,
+                letterSpacing: 1,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Promo code',
+                hintStyle: const TextStyle(
+                  fontFamily: 'IBMPlexSansArabic',
                   fontSize: 13,
-                  color: muted ? kSlate : kNavy,
-                  fontWeight: FontWeight.w500)),
-          const Spacer(),
-          Text(value,
-              style: TextStyle(
-                  fontSize: 13,
-                  color: accent ? Colors.green : (muted ? kSlate : kNavy),
-                  fontWeight: FontWeight.w700)),
+                  color: _kSlate,
+                ),
+                filled: true,
+                fillColor: _kCream,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: _kBorder),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: _kBorder),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: _kNavy, width: 1.5),
+                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          OutlineButton(
+            label: _applying ? '…' : 'Apply',
+            onPressed: _applying ? null : _apply,
+            height: 46,
+          ),
         ],
       );
 }
 
-class _TrustBadge extends StatelessWidget {
-  final IconData icon;
+// ─────────────────────────────────────────────────────────────────────────────
+// _SummaryRow
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SummaryRow extends StatelessWidget {
+  const _SummaryRow({
+    required this.label,
+    required this.value,
+    this.bold = false,
+    this.valueColor,
+  });
+
   final String label;
-  const _TrustBadge({required this.icon, required this.label});
+  final String value;
+  final bool bold;
+  final Color? valueColor;
 
   @override
   Widget build(BuildContext context) => Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(icon, size: 13, color: kSlate),
-          const SizedBox(width: 4),
-          Text(label,
-              style: const TextStyle(
-                  fontSize: 11, color: kSlate, fontWeight: FontWeight.w500)),
+          Text(
+            label,
+            style: bold
+                ? AppTextStyles.titleMedium
+                : AppTextStyles.bodyMedium.copyWith(color: _kSlate),
+          ),
+          Text(
+            value,
+            style: (bold ? AppTextStyles.priceMedium : AppTextStyles.bodyMedium)
+                .copyWith(
+              color: valueColor,
+            ),
+          ),
         ],
       );
 }

@@ -60,7 +60,7 @@ class AdminController extends GetxController {
       final from = page * pageSize;
       final res = await _client
           .from(SupabaseConstants.staff)
-          .select()
+          .select('*, profiles(first_name, last_name, role)')
           .range(from, from + pageSize - 1)
           .count(sb.CountOption.exact);
 
@@ -207,16 +207,13 @@ class AdminController extends GetxController {
     isLoadingInventory.value = true;
     try {
       final from = page * pageSize;
-      var query = _client
-          .from(SupabaseConstants.inventory)
-          .select()
-          .range(from, from + pageSize - 1);
+      var query = _client.from(SupabaseConstants.inventory).select();
 
       if (storeId != null) {
         query = query.eq('store_id', storeId);
       }
 
-      final res = await query.count(sb.CountOption.exact);
+      final res = await query.range(from, from + pageSize - 1).count(sb.CountOption.exact);
 
       inventory.assignAll(
         (res.data as List<dynamic>)

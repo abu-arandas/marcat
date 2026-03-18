@@ -51,7 +51,7 @@ class _PosAuthScreenState extends State<PosAuthScreen> {
         authState.isAdmin) {
       try {
         final isValid = await Get.find<AdminController>()
-            .verifyPosPin(authState.user!.id, _pin);
+            .verifyPosPin(staffId: authState.user!.id, pin: _pin);
 
         if (isValid) {
           if (mounted) {

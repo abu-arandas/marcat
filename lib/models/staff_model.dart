@@ -16,6 +16,9 @@
 // NOTE: pos_pin_hash is returned by Supabase only for admin queries;
 //       it should never be sent to a client-facing UI.
 
+import 'enums.dart';
+
+
 class StaffModel {
   const StaffModel({
     required this.id,
@@ -25,6 +28,9 @@ class StaffModel {
     required this.isActive,
     required this.createdAt,
     required this.updatedAt,
+    this.firstName = 'Unknown',
+    this.lastName,
+    this.role,
   });
 
   /// UUID — shared PK/FK with public.profiles
@@ -41,8 +47,13 @@ class StaffModel {
   final bool isActive;
   final DateTime createdAt;
   final DateTime updatedAt;
+  
+  final String firstName;
+  final String? lastName;
+  final UserRole? role;
 
   factory StaffModel.fromJson(Map<String, dynamic> json) {
+    final profiles = json['profiles'] as Map<String, dynamic>?;
     return StaffModel(
       id: json['id'] as String,
       assignedStoreId: json['assigned_store_id'] as int?,
@@ -51,6 +62,9 @@ class StaffModel {
       isActive: json['is_active'] as bool? ?? true,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
+      firstName: (profiles?['first_name'] ?? json['first_name'] ?? 'Unknown') as String,
+      lastName: (profiles?['last_name'] ?? json['last_name']) as String?,
+      role: UserRoleX.fromDb(profiles?['role'] ?? json['role'] as String?),
     );
   }
 
@@ -62,6 +76,9 @@ class StaffModel {
         'is_active': isActive,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
+        'first_name': firstName,
+        'last_name': lastName,
+        'role': role?.dbValue,
       };
 
   StaffModel copyWith({
@@ -72,6 +89,9 @@ class StaffModel {
     bool? isActive,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? firstName,
+    String? lastName,
+    UserRole? role,
   }) {
     return StaffModel(
       id: id ?? this.id,
@@ -81,6 +101,9 @@ class StaffModel {
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      role: role ?? this.role,
     );
   }
 

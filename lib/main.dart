@@ -1,20 +1,16 @@
 // lib/main.dart
 
-import 'package:flutter/foundation.dart'; // kDebugMode
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bootstrap5/flutter_bootstrap5.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'core/constants/supabase_constants.dart';
 import 'core/constants/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'core/initial_binding.dart';
-import 'controllers/locale_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,9 +19,7 @@ Future<void> main() async {
     try {
       await dotenv.load(fileName: '.env');
     } catch (_) {
-      // .env may not exist in a freshly cloned repo — non-fatal in debug.
-      debugPrint(
-          '[main] .env file not found — ensure it exists for local dev.');
+      debugPrint('[main] .env file not found — ensure it exists for local dev.');
     }
   }
 
@@ -43,32 +37,16 @@ class MarcatApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FlutterBootstrap5(
-      builder: (context) => GetBuilder<LocaleController>(
-        builder: (localeCtrl) => GetMaterialApp(
-          title: 'Marcat',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.light,
-          themeMode: ThemeMode.light,
+      builder: (context) => GetMaterialApp(
+        title: 'Marcat',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light,
+        themeMode: ThemeMode.light,
 
-          // ── Localisation ─────────────────────────────────────────────
-          locale: localeCtrl.locale,
-          fallbackLocale: const Locale('en'),
-          localizationsDelegates: const [
-            AppLocalizations.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          supportedLocales: const [
-            Locale('en'), // English
-            Locale('ar'), // Arabic (RTL)
-          ],
-
-          // ── Routing & DI ─────────────────────────────────────────────
-          initialBinding: InitialBinding(),
-          initialRoute: AppRoutes.home,
-          getPages: AppPages.pages,
-        ),
+        // ── Routing & DI ─────────────────────────────────────────────
+        initialBinding: InitialBinding(),
+        initialRoute: AppRoutes.home,
+        getPages: AppPages.pages,
       ),
     );
   }

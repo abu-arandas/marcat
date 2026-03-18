@@ -8,11 +8,6 @@ extension BuildContextExtensions on BuildContext {
   ColorScheme get colorScheme => Theme.of(this).colorScheme;
   TextTheme get textTheme => Theme.of(this).textTheme;
 
-  // ── Locale ────────────────────────────────────────────────────────────────
-  Locale get locale => Localizations.localeOf(this);
-  String get localeString => locale.languageCode;
-  bool get isArabic => locale.languageCode == 'ar';
-
   // ── MediaQuery shortcuts ──────────────────────────────────────────────────
   MediaQueryData get mediaQuery => MediaQuery.of(this);
   double get screenWidth => mediaQuery.size.width;
@@ -22,10 +17,10 @@ extension BuildContextExtensions on BuildContext {
   EdgeInsets get viewInsets => mediaQuery.viewInsets;
   bool get isKeyboardOpen => mediaQuery.viewInsets.bottom > 0;
 
-  // ── Layout helpers ────────────────────────────────────────────────────────
-  bool get isTablet => screenWidth >= 768;
-  bool get isDesktop => screenWidth >= 1200;
-  bool get isMobile => screenWidth < 768;
+  // ── Bootstrap-aligned breakpoints ────────────────────────────────────────
+  bool get isMobile => screenWidth < 576;
+  bool get isTablet => screenWidth >= 576 && screenWidth < 992;
+  bool get isDesktop => screenWidth >= 992;
 
   // ── Navigator ─────────────────────────────────────────────────────────────
   NavigatorState get navigator => Navigator.of(this);
@@ -44,14 +39,4 @@ extension BuildContextExtensions on BuildContext {
       ),
     );
   }
-
-  // ── Text direction helpers ────────────────────────────────────────────────
-  TextDirection get textDirection =>
-      isArabic ? TextDirection.rtl : TextDirection.ltr;
-
-  Alignment get startAlignment =>
-      isArabic ? Alignment.centerRight : Alignment.centerLeft;
-
-  Alignment get endAlignment =>
-      isArabic ? Alignment.centerLeft : Alignment.centerRight;
 }

@@ -3,15 +3,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bootstrap5/flutter_bootstrap5.dart';
 import 'package:get/get.dart';
+
 import 'package:marcat/controllers/auth_controller.dart';
 import 'package:marcat/controllers/cart_controller.dart';
+import 'package:marcat/core/constants/app_colors.dart';
+import 'package:marcat/core/constants/app_text_styles.dart';
+import 'package:marcat/core/extensions/currency_extensions.dart';
+import 'package:marcat/core/router/app_router.dart';
+import 'package:marcat/models/enums.dart';
 import 'package:marcat/models/sale_model.dart';
 
 import 'scaffold/app_scaffold.dart';
-import 'shared/brand.dart';
 import 'shared/empty_state.dart';
 import 'shared/section_header.dart';
-import 'package:marcat/core/router/app_router.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OrdersPage
+// ─────────────────────────────────────────────────────────────────────────────
 
 class OrdersPage extends StatefulWidget {
   const OrdersPage({super.key});
@@ -21,10 +29,10 @@ class OrdersPage extends StatefulWidget {
 }
 
 class _OrdersPageState extends State<OrdersPage> {
-  final orders = <SaleModel>[];
-  bool isLoading = true;
-  bool hasMore = true;
-  String? filterStatus;
+  final _orders = <SaleModel>[];
+  bool _isLoading = true;
+  bool _hasMore = true;
+  String? _filterStatus;
   int _page = 0;
 
   CartController get _repo => Get.find<CartController>();
@@ -33,614 +41,369 @@ class _OrdersPageState extends State<OrdersPage> {
   @override
   void initState() {
     super.initState();
-    fetchOrders(reset: true);
+    _fetchOrders(reset: true);
   }
 
-  Future<void> fetchOrders({bool reset = false}) async {
+  Future<void> _fetchOrders({bool reset = false}) async {
     final user = _auth.state.value.user;
     if (user == null) {
-      if (mounted) setState(() => isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
       return;
     }
     if (reset) {
       _page = 0;
-      orders.clear();
-      hasMore = true;
+      _orders.clear();
+      _hasMore = true;
     }
-    if (!hasMore) return;
-    if (mounted) setState(() => isLoading = true);
+    if (!_hasMore) return;
+    if (mounted) setState(() => _isLoading = true);
     try {
       final (items, total) = await _repo.fetchOrders(
         page: _page,
         customerId: user.id,
-        status: filterStatus,
+        status: _filterStatus,
       );
       if (mounted) {
         setState(() {
-          orders.addAll(items);
+          _orders.addAll(items);
           _page++;
-          hasMore = orders.length < total;
+          _hasMore = _orders.length < total;
+          _isLoading = false;
         });
       }
     } catch (e) {
-      Get.snackbar('Error', e.toString());
-    } finally {
-      if (mounted) setState(() => isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
+      Get.snackbar('Error', e.toString(),
+          backgroundColor: AppColors.marcatNavy, colorText: Colors.white);
     }
   }
 
-  void setFilter(String? status) {
-    setState(() {
-      filterStatus = status;
-    });
-    fetchOrders(reset: true);
+  void _setFilter(String? status) {
+    setState(() => _filterStatus = status);
+    _fetchOrders(reset: true);
   }
 
   @override
-  Widget build(BuildContext context) {
-    return CustomerScaffold(
-      page: 'My Orders',
-      pageImage:
-          'https://images.unsplash.com/photo-1601598851547-4302969d0614?w=1600&q=80',
-      body: _OrdersBody(
-        orders: orders,
-        isLoading: isLoading,
-        hasMore: hasMore,
-        filterStatus: filterStatus,
-        onFetchOrders: fetchOrders,
-        onSetFilter: setFilter,
-      ),
-    );
-  }
+  Widget build(BuildContext context) => CustomerScaffold(
+        page: 'My Orders',
+        pageImage:
+            'https://images.unsplash.com/photo-1601598851547-4302969d0614?w=1600&q=80',
+        body: _OrdersBody(
+          orders: _orders,
+          isLoading: _isLoading,
+          hasMore: _hasMore,
+          filterStatus: _filterStatus,
+          onLoadMore: () => _fetchOrders(),
+          onSetFilter: _setFilter,
+          onRefresh: () => _fetchOrders(reset: true),
+        ),
+      );
 }
 
-class _OrdersBody extends StatelessWidget {
-  final List<SaleModel> orders;
-  final bool isLoading;
-  final bool hasMore;
-  final String? filterStatus;
-  final Future<void> Function() onFetchOrders;
-  final void Function(String?) onSetFilter;
+// ─────────────────────────────────────────────────────────────────────────────
+// _OrdersBody
+// ─────────────────────────────────────────────────────────────────────────────
 
+class _OrdersBody extends StatelessWidget {
   const _OrdersBody({
     required this.orders,
     required this.isLoading,
     required this.hasMore,
     required this.filterStatus,
-    required this.onFetchOrders,
+    required this.onLoadMore,
     required this.onSetFilter,
+    required this.onRefresh,
   });
 
+  final List<SaleModel> orders;
+  final bool isLoading;
+  final bool hasMore;
+  final String? filterStatus;
+  final VoidCallback onLoadMore;
+  final void Function(String?) onSetFilter;
+  final VoidCallback onRefresh;
+
+  static const _statuses = [
+    null, 'pending', 'paid', 'shipped', 'delivered', 'cancelled',
+  ];
+
   @override
-  Widget build(BuildContext context) {
-    final auth = Get.find<AuthController>();
-
-    return Obx(() {
-      if (auth.state.value.user == null) {
-        return EmptyState(
-          icon: Icons.receipt_long_outlined,
-          title: 'Sign In to View Orders',
-          subtitle: 'Track all your MARCAT orders in one place.',
-          actionLabel: 'Sign In',
-          onAction: () => Get.toNamed(AppRoutes.login),
-        );
-      }
-
-      return FB5Container(
+  Widget build(BuildContext context) => FB5Container(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 40),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SectionHeader(
-                eyebrow: 'Purchase History',
+                eyebrow: 'Account',
                 title: 'My Orders',
-                subtitle: 'Track, view, and manage all your orders.',
+                subtitle: 'Track and manage your purchases.',
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
 
-              // Status filter chips
-              _StatusFilterRow(
-                filterStatus: filterStatus,
-                onSetFilter: onSetFilter,
+              // ── Status filter chips ────────────────────────────────────
+              SizedBox(
+                height: 40,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: _statuses.map((s) {
+                    final isActive = filterStatus == s;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text(
+                          s == null ? 'All' : _capitalize(s),
+                          style: TextStyle(
+                            fontFamily: 'IBMPlexSansArabic',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isActive
+                                ? Colors.white
+                                : AppColors.marcatNavy,
+                          ),
+                        ),
+                        selected: isActive,
+                        onSelected: (_) => onSetFilter(s),
+                        selectedColor: AppColors.marcatNavy,
+                        backgroundColor: AppColors.marcatCream,
+                        side: const BorderSide(color: AppColors.borderLight),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                    );
+                  }).toList(),
+                ),
               ),
-              const SizedBox(height: 28),
 
-              // Orders list
+              const SizedBox(height: 32),
+
+              // ── Orders list ────────────────────────────────────────────
               if (isLoading && orders.isEmpty)
-                const _OrdersSkeleton()
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 60),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: AppColors.marcatGold),
+                  ),
+                )
               else if (orders.isEmpty)
                 EmptyState(
                   icon: Icons.receipt_long_outlined,
                   title: 'No Orders Yet',
-                  subtitle:
-                      'You haven\'t placed any orders yet.\nStart shopping to see them here.',
+                  subtitle: "You haven't placed any orders yet.\nStart shopping to see them here.",
                   actionLabel: 'Shop Now',
                   onAction: () => Get.toNamed(AppRoutes.shop),
                 )
-              else
-                Column(
-                  children: [
-                    ...orders.map((o) => _OrderCard(order: o)),
-                    if (hasMore) ...[
-                      const SizedBox(height: 24),
-                      Center(
-                        child: OutlinedButton(
-                          onPressed: onFetchOrders,
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: kNavy,
-                            side: const BorderSide(color: kNavy),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8)),
-                          ),
-                          child: const Text('Load More',
-                              style: TextStyle(fontWeight: FontWeight.w700)),
-                        ),
-                      ),
-                    ],
-                  ],
+              else ...[
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: orders.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 16),
+                  itemBuilder: (_, i) => _OrderCard(order: orders[i]),
                 ),
+                if (hasMore) ...[
+                  const SizedBox(height: 32),
+                  Center(
+                    child: isLoading
+                        ? const CircularProgressIndicator(
+                            strokeWidth: 2, color: AppColors.marcatGold)
+                        : OutlinedButton(
+                            onPressed: onLoadMore,
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(
+                                  color: AppColors.marcatNavy),
+                              foregroundColor: AppColors.marcatNavy,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 32, vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: const Text(
+                              'Load More',
+                              style: TextStyle(
+                                fontFamily: 'IBMPlexSansArabic',
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                  ),
+                ],
+              ],
             ],
           ),
         ),
       );
-    });
-  }
+
+  String _capitalize(String s) =>
+      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 }
 
-// â”€â”€â”€ Status filter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
+// _OrderCard
+// ─────────────────────────────────────────────────────────────────────────────
 
-class _StatusFilterRow extends StatelessWidget {
-  final String? filterStatus;
-  final void Function(String?) onSetFilter;
-
-  const _StatusFilterRow({
-    required this.filterStatus,
-    required this.onSetFilter,
-  });
-
-  static const _statuses = [
-    (label: 'All', value: null),
-    (label: 'Pending', value: 'pending'),
-    (label: 'Processing', value: 'processing'),
-    (label: 'Shipped', value: 'shipped'),
-    (label: 'Delivered', value: 'delivered'),
-    (label: 'Cancelled', value: 'cancelled'),
-  ];
-
-  @override
-  Widget build(BuildContext context) => SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: _statuses.map((s) {
-            final selected = filterStatus == s.value;
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: GestureDetector(
-                onTap: () => onSetFilter(s.value),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-                  decoration: BoxDecoration(
-                    color: selected ? kNavy : Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: selected ? kNavy : kBorderColor),
-                  ),
-                  child: Text(
-                    s.label,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: selected ? Colors.white : kNavy,
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      );
-}
-
-// â”€â”€â”€ Order Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-class _OrderCard extends StatefulWidget {
-  final SaleModel order;
+class _OrderCard extends StatelessWidget {
   const _OrderCard({required this.order});
 
-  @override
-  State<_OrderCard> createState() => _OrderCardState();
-}
-
-class _OrderCardState extends State<_OrderCard> {
-  bool _expanded = false;
-
-  Color _statusColor(String status) {
-    switch (status) {
-      case 'delivered':
-        return Colors.green;
-      case 'shipped':
-        return Colors.blue;
-      case 'processing':
-        return kGold;
-      case 'cancelled':
-        return kRed;
-      default:
-        return kSlate;
-    }
-  }
+  final SaleModel order;
 
   @override
-  Widget build(BuildContext context) {
-    final status = widget.order.status;
-    final statusColor = _statusColor(status.name);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: kBorderColor),
-      ),
-      child: Column(
-        children: [
-          // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-          GestureDetector(
-            onTap: () => setState(() => _expanded = !_expanded),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: () => Get.toNamed(AppRoutes.orderDetailOf(order.id)),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.borderLight),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  // Order icon
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: kCream,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.receipt_long_outlined,
-                        size: 20, color: kNavy),
-                  ),
-                  const SizedBox(width: 14),
-
-                  // Order details
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.order.referenceNumber,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: kNavy,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          _formatDate(widget.order.createdAt),
-                          style: const TextStyle(fontSize: 12, color: kSlate),
-                        ),
-                      ],
+                    child: Text(
+                      '#${order.referenceNumber}',
+                      style: AppTextStyles.referenceText,
                     ),
                   ),
-
-                  // Status + amount
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          status.name.capitalizeFirst ?? status.name,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: statusColor,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'JOD ${widget.order.grandTotal.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: kNavy,
-                        ),
-                      ),
-                    ],
+                  _StatusBadge(status: order.status),
+                ],
+              ),
+              const SizedBox(height: 10),
+              const Divider(color: AppColors.borderLight, height: 1),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  _InfoItem(
+                    icon: Icons.calendar_today_outlined,
+                    label: _formatDate(order.createdAt),
                   ),
-
-                  const SizedBox(width: 8),
-                  AnimatedRotation(
-                    turns: _expanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 250),
-                    child: const Icon(Icons.keyboard_arrow_down_rounded,
-                        size: 20, color: kSlate),
+                  const SizedBox(width: 20),
+                  _InfoItem(
+                    icon: Icons.storefront_outlined,
+                    label: order.channel.dbValue.toUpperCase(),
+                  ),
+                  const Spacer(),
+                  Text(
+                    order.grandTotal.toJOD(),
+                    style: AppTextStyles.priceMedium,
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    'View Details',
+                    style: TextStyle(
+                      fontFamily: 'IBMPlexSansArabic',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.marcatGold,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.arrow_forward_rounded,
+                      size: 14, color: AppColors.marcatGold),
+                ],
+              ),
+            ],
           ),
+        ),
+      );
 
-          // â”€â”€ Expanded details â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-          AnimatedCrossFade(
-            firstChild: const SizedBox.shrink(),
-            secondChild: _OrderDetails(order: widget.order),
-            crossFadeState: _expanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 250),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatDate(DateTime? dt) {
-    if (dt == null) return 'â€”';
+  String _formatDate(DateTime dt) {
+    final local = dt.toLocal();
     const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
-    return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+    return '${local.day} ${months[local.month - 1]} ${local.year}';
   }
 }
 
-class _OrderDetails extends StatelessWidget {
-  final SaleModel order;
-  const _OrderDetails({required this.order});
+class _InfoItem extends StatelessWidget {
+  const _InfoItem({required this.icon, required this.label});
 
-  @override
-  Widget build(BuildContext context) => Container(
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: kBorderColor)),
-        ),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Progress tracker
-            _OrderProgress(status: order.status.name),
-            const SizedBox(height: 24),
-
-            // Pricing breakdown
-            _PriceRow('Subtotal', 'JOD ${order.subtotal.toStringAsFixed(2)}'),
-            if (order.discountTotal > 0) ...[
-              const SizedBox(height: 6),
-              _PriceRow(
-                  'Discount', '- JOD ${order.discountTotal.toStringAsFixed(2)}',
-                  green: true),
-            ],
-            if (order.shippingCost > 0) ...[
-              const SizedBox(height: 6),
-              _PriceRow(
-                  'Shipping', 'JOD ${order.shippingCost.toStringAsFixed(2)}'),
-            ],
-            const SizedBox(height: 10),
-            const Divider(color: kBorderColor),
-            const SizedBox(height: 10),
-            _PriceRow('Total', 'JOD ${order.grandTotal.toStringAsFixed(2)}',
-                bold: true),
-
-            const SizedBox(height: 20),
-
-            // Actions
-            Row(
-              children: [
-                // Reorder
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.replay_rounded, size: 16),
-                    label: const Text('Reorder',
-                        style: TextStyle(fontWeight: FontWeight.w700)),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: kNavy,
-                      side: const BorderSide(color: kNavy),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Return
-                if (order.status.name == 'delivered')
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.assignment_return_outlined,
-                          size: 16),
-                      label: const Text('Return',
-                          style: TextStyle(fontWeight: FontWeight.w700)),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: kSlate,
-                        side: const BorderSide(color: kBorderColor),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        ),
-      );
-}
-
-class _OrderProgress extends StatelessWidget {
-  final String status;
-  const _OrderProgress({required this.status});
-
-  static const _stages = [
-    'pending',
-    'processing',
-    'shipped',
-    'delivered',
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    if (status == 'cancelled') {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: kRed.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: kRed.withOpacity(0.2)),
-        ),
-        child: const Row(
-          children: [
-            Icon(Icons.cancel_outlined, size: 16, color: kRed),
-            SizedBox(width: 10),
-            Text('This order was cancelled.',
-                style: TextStyle(
-                    fontSize: 13, color: kRed, fontWeight: FontWeight.w600)),
-          ],
-        ),
-      );
-    }
-
-    final currentIdx = _stages.indexOf(status);
-
-    return Row(
-      children: List.generate(_stages.length * 2 - 1, (i) {
-        if (i.isOdd) {
-          final lineIdx = i ~/ 2;
-          final active = lineIdx < currentIdx;
-          return Expanded(
-            child: Container(
-              height: 2,
-              color: active ? kNavy : kBorderColor,
-            ),
-          );
-        }
-        final stageIdx = i ~/ 2;
-        final done = stageIdx < currentIdx;
-        final active = stageIdx == currentIdx;
-        return Column(
-          children: [
-            Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: done || active ? kNavy : Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(
-                    color: done || active ? kNavy : kBorderColor, width: 2),
-              ),
-              child: done
-                  ? const Icon(Icons.check_rounded,
-                      size: 12, color: Colors.white)
-                  : active
-                      ? Container(
-                          margin: const EdgeInsets.all(5),
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                          ),
-                        )
-                      : null,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              _stages[stageIdx].capitalizeFirst ?? _stages[stageIdx],
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: active || done ? FontWeight.w700 : FontWeight.w500,
-                color: active || done ? kNavy : kSlate,
-              ),
-            ),
-          ],
-        );
-      }),
-    );
-  }
-}
-
-class _PriceRow extends StatelessWidget {
-  final String label, value;
-  final bool green, bold;
-  const _PriceRow(this.label, this.value,
-      {this.green = false, this.bold = false});
+  final IconData icon;
+  final String label;
 
   @override
   Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label,
-              style: TextStyle(
-                  fontSize: 13,
-                  color: bold ? kNavy : kSlate,
-                  fontWeight: bold ? FontWeight.w700 : FontWeight.w500)),
-          const Spacer(),
-          Text(value,
-              style: TextStyle(
-                  fontSize: bold ? 15 : 13,
-                  color: green ? Colors.green : kNavy,
-                  fontWeight: FontWeight.w700)),
+          Icon(icon, size: 13, color: AppColors.marcatSlate),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              fontFamily: 'IBMPlexSansArabic',
+              fontSize: 12,
+              color: AppColors.marcatSlate,
+            ),
+          ),
         ],
       );
 }
 
-// â”€â”€â”€ Orders Loading Skeleton â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
+// _StatusBadge
+// ─────────────────────────────────────────────────────────────────────────────
 
-class _OrdersSkeleton extends StatelessWidget {
-  const _OrdersSkeleton();
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.status});
+
+  final SaleStatus status;
 
   @override
-  Widget build(BuildContext context) => Column(
-        children: List.generate(
-          4,
-          (_) => Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: kBorderColor),
-            ),
-            child: Row(
-              children: [
-                Container(
-                    width: 44,
-                    height: 44,
-                    color: kCream,
-                    child: const SizedBox()),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(width: 140, height: 14, color: kCream),
-                      const SizedBox(height: 8),
-                      Container(width: 100, height: 10, color: kCream),
-                    ],
-                  ),
-                ),
-                Container(width: 80, height: 32, color: kCream),
-              ],
-            ),
-          ),
+  Widget build(BuildContext context) {
+    final (bg, fg, label) = switch (status) {
+      SaleStatus.pending => (
+          AppColors.statusAmberLight,
+          AppColors.statusAmber,
+          'Pending'
         ),
-      );
+      SaleStatus.paid => (
+          AppColors.statusBlueLight,
+          AppColors.statusBlue,
+          'Paid'
+        ),
+      SaleStatus.shipped => (
+          AppColors.statusBlueLight,
+          AppColors.statusBlue,
+          'Shipped'
+        ),
+      SaleStatus.delivered => (
+          AppColors.statusGreenLight,
+          AppColors.statusGreen,
+          'Delivered'
+        ),
+      SaleStatus.cancelled => (
+          AppColors.statusRedLight,
+          AppColors.statusRed,
+          'Cancelled'
+        ),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontFamily: 'IBMPlexSansArabic',
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: fg,
+        ),
+      ),
+    );
+  }
 }

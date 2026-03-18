@@ -4,14 +4,8 @@ import 'package:flutter/material.dart';
 import 'brand.dart';
 
 /// Reusable section header used across all customer pages.
-/// Shows an eyebrow label, serif title, optional subtitle & trailing action.
+/// Shows a gold eyebrow label, serif title, optional subtitle & trailing action.
 class SectionHeader extends StatelessWidget {
-  final String eyebrow;
-  final String title;
-  final String? subtitle;
-  final Widget? action;
-  final bool dark;
-
   const SectionHeader({
     super.key,
     required this.eyebrow,
@@ -21,6 +15,12 @@ class SectionHeader extends StatelessWidget {
     this.dark = false,
   });
 
+  final String eyebrow;
+  final String title;
+  final String? subtitle;
+  final Widget? action;
+  final bool dark;
+
   @override
   Widget build(BuildContext context) => Row(
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -29,47 +29,59 @@ class SectionHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(children: [
-                  Container(
-                    width: 24,
-                    height: 2,
-                    color: kGold,
-                    margin: const EdgeInsets.only(right: 10),
-                  ),
-                  Text(
-                    eyebrow.toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
+                // ── Eyebrow ──────────────────────────────────────────────
+                Row(
+                  children: [
+                    Container(
+                      width: 24,
+                      height: 2,
                       color: kGold,
-                      letterSpacing: 2,
+                      margin: const EdgeInsets.only(right: 10),
                     ),
-                  ),
-                ]),
+                    Text(
+                      eyebrow.toUpperCase(),
+                      style: const TextStyle(
+                        fontFamily: 'IBMPlexSansArabic',
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: kGold,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 10),
+
+                // ── Title ────────────────────────────────────────────────
                 Text(
                   title,
                   style: TextStyle(
-                    fontFamily: 'Playfair Display',
+                    fontFamily: 'PlayfairDisplay', // ✅ correct — no space
                     fontSize: 30,
                     fontWeight: FontWeight.w700,
                     color: dark ? Colors.white : kNavy,
-                    height: 1.1,
+                    height: 1.15,
                   ),
                 ),
+
+                // ── Subtitle ─────────────────────────────────────────────
                 if (subtitle != null) ...[
                   const SizedBox(height: 8),
                   Text(
                     subtitle!,
                     style: TextStyle(
+                      fontFamily: 'IBMPlexSansArabic',
                       fontSize: 14,
                       color: dark ? Colors.white.withOpacity(0.55) : kSlate,
+                      height: 1.5,
                     ),
                   ),
                 ],
               ],
             ),
           ),
+
+          // ── Trailing action (e.g. "View All" button) ──────────────────
           if (action != null) ...[
             const SizedBox(width: 16),
             action!,

@@ -3,18 +3,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bootstrap5/flutter_bootstrap5.dart';
 import 'package:get/get.dart';
-import 'package:marcat/models/sale_model.dart';
-import 'package:marcat/models/sale_item_model.dart';
-import 'package:marcat/core/constants/app_colors.dart';
-import 'package:marcat/core/extensions/currency_extensions.dart';
 
-import '../../controllers/cart_controller.dart';
+import 'package:marcat/controllers/cart_controller.dart';
+import 'package:marcat/core/constants/app_colors.dart';
+import 'package:marcat/core/constants/app_text_styles.dart';
+import 'package:marcat/core/extensions/currency_extensions.dart';
+import 'package:marcat/models/enums.dart';
+import 'package:marcat/models/sale_item_model.dart';
+import 'package:marcat/models/sale_model.dart';
+
 import 'scaffold/app_scaffold.dart';
 import 'shared/section_header.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CustomerOrderDetailPage
+// ─────────────────────────────────────────────────────────────────────────────
+
 class CustomerOrderDetailPage extends StatefulWidget {
-  final int orderId;
   const CustomerOrderDetailPage({super.key, required this.orderId});
+
+  final int orderId;
 
   @override
   State<CustomerOrderDetailPage> createState() =>
@@ -22,10 +30,10 @@ class CustomerOrderDetailPage extends StatefulWidget {
 }
 
 class _CustomerOrderDetailPageState extends State<CustomerOrderDetailPage> {
-  SaleModel? order;
-  List<SaleItemModel>? items;
-  bool isLoading = true;
-  String? error;
+  SaleModel? _order;
+  List<SaleItemModel>? _items;
+  bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -34,191 +42,374 @@ class _CustomerOrderDetailPageState extends State<CustomerOrderDetailPage> {
   }
 
   Future<void> _fetch() async {
-    if (mounted) setState(() => isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     try {
       final repo = Get.find<CartController>();
-      final orderData = await repo.fetchOrderById(widget.orderId);
-      final itemsData = await repo.fetchOrderItems(widget.orderId);
+      final order = await repo.fetchOrderById(widget.orderId);
+      final items = await repo.fetchOrderItems(widget.orderId);
       if (mounted) {
         setState(() {
-          order = orderData;
-          items = itemsData;
-          isLoading = false;
+          _order = order;
+          _items = items;
+          _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          error = e.toString();
-          isLoading = false;
+          _error = e.toString();
+          _isLoading = false;
         });
       }
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    return CustomerScaffold(
-      page: 'Order Details',
-      body: FB5Container(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 40),
-          child: _buildContent(),
+  Widget build(BuildContext context) => CustomerScaffold(
+        page: 'Order Details',
+        body: FB5Container(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 40),
+            child: _buildContent(),
+          ),
         ),
-      ),
-    );
-  }
+      );
 
   Widget _buildContent() {
-    if (isLoading) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(40.0),
-          child: CircularProgressIndicator(color: AppColors.marcatGold),
+    if (_isLoading) {
+      return const Padding(
+        padding: EdgeInsets.all(60),
+        child: Center(
+          child: CircularProgressIndicator(
+              strokeWidth: 2, color: AppColors.marcatGold),
         ),
       );
     }
 
-    if (error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(40.0),
-          child: Text('Error: $error'),
+    if (_error != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 60),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline_rounded,
+                  size: 48, color: AppColors.marcatSlate),
+              const SizedBox(height: 12),
+              Text(_error!,
+                  style: const TextStyle(color: AppColors.marcatSlate)),
+              const SizedBox(height: 16),
+              TextButton.icon(
+                onPressed: _fetch,
+                icon: const Icon(Icons.refresh_rounded, size: 16),
+                label: const Text('Retry'),
+                style: TextButton.styleFrom(
+                    foregroundColor: AppColors.marcatNavy),
+              ),
+            ],
+          ),
         ),
       );
     }
 
-    if (order == null) return const SizedBox.shrink();
+    if (_order == null) return const SizedBox.shrink();
 
-    final o = order!;
+    final o = _order!;
+    final items = _items ?? [];
+    final isDesktop = MediaQuery.sizeOf(context).width > 768;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionHeader(
-          eyebrow: 'Order #${o.id}',
-          title: 'Order Details',
-          subtitle: 'Reference: ${o.referenceNumber}',
+        // ── Back button ────────────────────────────────────────────────────
+        TextButton.icon(
+          onPressed: Get.back,
+          icon: const Icon(Icons.arrow_back_rounded, size: 16),
+          label: const Text('Back to Orders'),
+          style: TextButton.styleFrom(foregroundColor: AppColors.marcatNavy),
         ),
-        const SizedBox(height: 28),
-        _OrderSummaryCard(order: o),
+        const SizedBox(height: 20),
+
+        SectionHeader(
+          eyebrow: 'Order',
+          title: '#${o.referenceNumber}',
+        ),
         const SizedBox(height: 24),
-        const Text('Items in your order',
-            style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.marcatBlack)),
-        const SizedBox(height: 16),
-        ...items!.map((item) => _OrderItemCard(item: item)),
+
+        // ── Content layout ─────────────────────────────────────────────────
+        if (isDesktop)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 3, child: _OrderItems(items: items)),
+              const SizedBox(width: 32),
+              SizedBox(
+                  width: 320, child: _OrderSummaryCard(order: o)),
+            ],
+          )
+        else
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _OrderSummaryCard(order: o),
+              const SizedBox(height: 24),
+              _OrderItems(items: items),
+            ],
+          ),
       ],
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _OrderSummaryCard
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _OrderSummaryCard extends StatelessWidget {
-  final SaleModel order;
   const _OrderSummaryCard({required this.order});
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderLight),
-      ),
-      child: Column(
-        children: [
-          _Row(
-              'Status', order.status.name.capitalizeFirst ?? order.status.name),
-          const SizedBox(height: 12),
-          _Row('Subtotal', order.subtotal.toJOD()),
-          const SizedBox(height: 12),
-          _Row('Discount', '-${order.discountTotal.toJOD()}',
-              color: Colors.green),
-          const SizedBox(height: 12),
-          _Row('Shipping', order.shippingCost.toJOD()),
-          const SizedBox(height: 16),
-          const Divider(color: AppColors.borderLight),
-          const SizedBox(height: 16),
-          _Row('Grand Total', order.grandTotal.toJOD(), bold: true),
-        ],
-      ),
-    );
-  }
-}
-
-class _Row extends StatelessWidget {
-  final String label, value;
-  final bool bold;
-  final Color? color;
-  const _Row(this.label, this.value, {this.bold = false, this.color});
+  final SaleModel order;
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label,
-            style: TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-                fontWeight: bold ? FontWeight.w700 : FontWeight.w500)),
-        Text(value,
-            style: TextStyle(
-                fontSize: bold ? 16 : 14,
-                color: color ?? AppColors.marcatBlack,
-                fontWeight: bold ? FontWeight.w700 : FontWeight.w500)),
-      ],
-    );
-  }
-}
-
-class _OrderItemCard extends StatelessWidget {
-  final SaleItemModel item;
-  const _OrderItemCard({required this.item});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.marcatCream.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.borderLight),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.checkroom, color: AppColors.marcatBlack),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.borderLight),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Product ID: ${item.productId}',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.marcatBlack)),
-                const SizedBox(height: 4),
-                Text('Qty: ${item.quantity}',
-                    style: const TextStyle(
-                        fontSize: 13, color: AppColors.textSecondary)),
+                Text('Order Summary', style: AppTextStyles.titleMedium),
+                _StatusBadge(status: order.status),
               ],
             ),
-          ),
-          Text(item.totalPrice.toJOD(),
-              style: const TextStyle(
-                  fontWeight: FontWeight.w700, color: AppColors.marcatBlack)),
-        ],
+            const SizedBox(height: 16),
+            const Divider(color: AppColors.borderLight),
+            const SizedBox(height: 12),
+
+            _DetailRow(
+              label: 'Channel',
+              value: order.channel.dbValue.toUpperCase(),
+            ),
+            _DetailRow(
+              label: 'Date',
+              value: _formatDate(order.createdAt),
+            ),
+            const SizedBox(height: 12),
+            const Divider(color: AppColors.borderLight),
+            const SizedBox(height: 12),
+
+            _DetailRow(label: 'Subtotal', value: order.subtotal.toJOD()),
+            if (order.discountTotal > 0)
+              _DetailRow(
+                label: 'Discount',
+                value: '-${order.discountTotal.toJOD()}',
+                valueColor: AppColors.successGreen,
+              ),
+            if (order.shippingCost > 0)
+              _DetailRow(
+                  label: 'Shipping', value: order.shippingCost.toJOD()),
+            if (order.taxTotal > 0)
+              _DetailRow(label: 'Tax', value: order.taxTotal.toJOD()),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10),
+              child: Divider(color: AppColors.borderLight),
+            ),
+            _DetailRow(
+              label: 'Total',
+              value: order.grandTotal.toJOD(),
+              bold: true,
+            ),
+          ],
+        ),
+      );
+
+  String _formatDate(DateTime dt) {
+    final local = dt.toLocal();
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${local.day} ${months[local.month - 1]} ${local.year}';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _OrderItems
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _OrderItems extends StatelessWidget {
+  const _OrderItems({required this.items});
+
+  final List<SaleItemModel> items;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.borderLight),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Items (${items.length})',
+              style: AppTextStyles.titleMedium,
+            ),
+            const SizedBox(height: 16),
+            const Divider(color: AppColors.borderLight),
+            if (items.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child: Text(
+                    'No items found.',
+                    style: TextStyle(
+                      fontFamily: 'IBMPlexSansArabic',
+                      color: AppColors.marcatSlate,
+                    ),
+                  ),
+                ),
+              )
+            else
+              ...items.map((item) => _ItemRow(item: item)),
+          ],
+        ),
+      );
+}
+
+class _ItemRow extends StatelessWidget {
+  const _ItemRow({required this.item});
+
+  final SaleItemModel item;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Item name + meta
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.productName ?? 'Product',
+                    style: AppTextStyles.titleSmall,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Qty: ${item.quantity}',
+                    style: const TextStyle(
+                      fontFamily: 'IBMPlexSansArabic',
+                      fontSize: 12,
+                      color: AppColors.marcatSlate,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            // Line total
+            Text(
+              item.totalPrice.toJOD(),
+              style: AppTextStyles.priceSmall,
+            ),
+          ],
+        ),
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _DetailRow
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({
+    required this.label,
+    required this.value,
+    this.bold = false,
+    this.valueColor,
+  });
+
+  final String label;
+  final String value;
+  final bool bold;
+  final Color? valueColor;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: bold
+                  ? AppTextStyles.titleSmall
+                  : AppTextStyles.bodyMedium
+                      .copyWith(color: AppColors.marcatSlate),
+            ),
+            Text(
+              value,
+              style: (bold
+                      ? AppTextStyles.priceMedium
+                      : AppTextStyles.bodyMedium)
+                  .copyWith(color: valueColor),
+            ),
+          ],
+        ),
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _StatusBadge
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.status});
+
+  final SaleStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final (bg, fg, label) = switch (status) {
+      SaleStatus.pending =>
+        (AppColors.statusAmberLight, AppColors.statusAmber, 'Pending'),
+      SaleStatus.paid =>
+        (AppColors.statusBlueLight, AppColors.statusBlue, 'Paid'),
+      SaleStatus.shipped =>
+        (AppColors.statusBlueLight, AppColors.statusBlue, 'Shipped'),
+      SaleStatus.delivered =>
+        (AppColors.statusGreenLight, AppColors.statusGreen, 'Delivered'),
+      SaleStatus.cancelled =>
+        (AppColors.statusRedLight, AppColors.statusRed, 'Cancelled'),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontFamily: 'IBMPlexSansArabic',
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: fg,
+        ),
       ),
     );
   }

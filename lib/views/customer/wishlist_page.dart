@@ -7,14 +7,19 @@ import 'package:get/get.dart';
 
 import 'package:marcat/controllers/product_controller.dart';
 import 'package:marcat/controllers/auth_controller.dart';
-import 'package:marcat/models/product_model.dart';
-import 'package:marcat/core/router/app_router.dart';
+import 'package:marcat/core/constants/app_colors.dart';
+import 'package:marcat/core/constants/app_text_styles.dart';
 import 'package:marcat/core/extensions/currency_extensions.dart';
+import 'package:marcat/core/router/app_router.dart';
+import 'package:marcat/models/product_model.dart';
 
 import 'scaffold/app_scaffold.dart';
-import 'shared/brand.dart';
 import 'shared/empty_state.dart';
 import 'shared/section_header.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WishlistPage
+// ─────────────────────────────────────────────────────────────────────────────
 
 class WishlistPage extends StatefulWidget {
   const WishlistPage({super.key});
@@ -24,87 +29,84 @@ class WishlistPage extends StatefulWidget {
 }
 
 class _WishlistPageState extends State<WishlistPage> {
-  final products = <ProductModel>[];
-  bool isLoading = true;
+  final _products = <ProductModel>[];
+  bool _isLoading = true;
+  String? _error;
 
   ProductController get _productCtrl => Get.find<ProductController>();
   AuthController get _auth => Get.find<AuthController>();
-
   String? get _userId => _auth.state.value.user?.id;
 
   @override
   void initState() {
     super.initState();
-    fetchWishlist();
+    _fetchWishlist();
   }
 
-  Future<void> fetchWishlist() async {
+  Future<void> _fetchWishlist() async {
     final uid = _userId;
     if (uid == null) {
-      if (mounted) setState(() => isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
       return;
     }
-    if (mounted) setState(() => isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     try {
-      // Ensure the wishlist observable is up to date.
       await _productCtrl.loadWishlist(uid);
-      final wishItems = _productCtrl.wishlistItems;
-      if (wishItems.isEmpty) {
-        if (mounted) {
-          setState(() {
-            products.clear();
-            isLoading = false;
-          });
+      final ids = _productCtrl.wishlistItems.map((w) => w.productId).toList();
+      final products = <ProductModel>[];
+      for (final id in ids) {
+        try {
+          final p = await _productCtrl.fetchProductById(id);
+          products.add(p);
+        } catch (_) {
+          // Skip products that failed to load.
         }
-        return;
       }
-      final ids = wishItems.map((w) => w.productId).toList();
-      final fetched = await _productCtrl.fetchProductsByIds(ids);
       if (mounted) {
         setState(() {
-          products
+          _products
             ..clear()
-            ..addAll(fetched);
-          isLoading = false;
+            ..addAll(products);
+          _isLoading = false;
         });
       }
     } catch (e) {
-      Get.snackbar('Error', e.toString());
-      if (mounted) setState(() => isLoading = false);
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  Future<void> removeFromWishlist(int productId) async {
+  Future<void> _removeFromWishlist(int productId) async {
     final uid = _userId;
     if (uid == null) return;
     try {
       await _productCtrl.removeFromWishlist(uid, productId);
       if (mounted) {
-        setState(() => products.removeWhere((p) => p.id == productId));
+        setState(() => _products.removeWhere((p) => p.id == productId));
       }
     } catch (e) {
-      Get.snackbar('Error', e.toString());
+      Get.snackbar('Error', e.toString(),
+          backgroundColor: AppColors.marcatNavy, colorText: Colors.white);
     }
   }
 
-  void viewProduct(int productId) {
-    Get.toNamed(AppRoutes.productOf(productId));
-  }
-
   @override
-  Widget build(BuildContext context) {
-    return CustomerScaffold(
-      page: 'Wishlist',
-      pageImage:
-          'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=1600&q=80',
-      body: _WishlistBody(
-        products: products,
-        isLoading: isLoading,
-        onRemove: removeFromWishlist,
-        onViewProduct: viewProduct,
-      ),
-    );
-  }
+  Widget build(BuildContext context) => CustomerScaffold(
+        page: 'Wishlist',
+        pageImage:
+            'https://images.unsplash.com/photo-1445205170230-053b83016050?w=1600&q=80',
+        body: _WishlistBody(
+          products: _products,
+          isLoading: _isLoading,
+          error: _error,
+          onRemove: _removeFromWishlist,
+          onRefresh: _fetchWishlist,
+        ),
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -115,18 +117,57 @@ class _WishlistBody extends StatelessWidget {
   const _WishlistBody({
     required this.products,
     required this.isLoading,
+    required this.error,
     required this.onRemove,
-    required this.onViewProduct,
+    required this.onRefresh,
   });
 
   final List<ProductModel> products;
   final bool isLoading;
-  final void Function(int) onRemove;
-  final void Function(int) onViewProduct;
+  final String? error;
+  final Future<void> Function(int) onRemove;
+  final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.sizeOf(context).width > 1024;
+    final width = MediaQuery.sizeOf(context).width;
+    final cols = width > 1024 ? 4 : (width > 576 ? 2 : 1);
+
+    if (isLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 80),
+        child: Center(
+          child: CircularProgressIndicator(
+              strokeWidth: 2, color: AppColors.marcatGold),
+        ),
+      );
+    }
+
+    if (error != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 60),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.wifi_off_rounded,
+                  size: 40, color: AppColors.marcatSlate),
+              const SizedBox(height: 12),
+              Text(error!,
+                  style: const TextStyle(color: AppColors.marcatSlate)),
+              const SizedBox(height: 16),
+              TextButton.icon(
+                onPressed: onRefresh,
+                icon: const Icon(Icons.refresh_rounded, size: 16),
+                label: const Text('Retry'),
+                style: TextButton.styleFrom(
+                    foregroundColor: AppColors.marcatNavy),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return FB5Container(
       child: Padding(
@@ -135,19 +176,19 @@ class _WishlistBody extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SectionHeader(
-              eyebrow: 'Your Saved Items',
-              title: 'Wishlist',
-              subtitle:
-                  '${products.length} item${products.length == 1 ? '' : 's'}',
+              eyebrow: 'Saved Items',
+              title: 'My Wishlist',
+              subtitle: products.isEmpty
+                  ? null
+                  : '${products.length} item${products.length != 1 ? 's' : ''}',
             ),
             const SizedBox(height: 32),
-            if (isLoading)
-              const Center(child: CircularProgressIndicator())
-            else if (products.isEmpty)
+            if (products.isEmpty)
               EmptyState(
-                icon: Icons.favorite_outline_rounded,
-                title: 'Your wishlist is empty',
-                subtitle: 'Save items you love by tapping the heart icon.',
+                icon: Icons.favorite_border_rounded,
+                title: 'Your Wishlist Is Empty',
+                subtitle:
+                    'Save items you love by tapping the heart icon on any product.',
                 actionLabel: 'Start Shopping',
                 onAction: () => Get.toNamed(AppRoutes.shop),
               )
@@ -156,16 +197,17 @@ class _WishlistBody extends StatelessWidget {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: isDesktop ? 4 : 2,
+                  crossAxisCount: cols,
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 24,
-                  childAspectRatio: 0.62,
+                  childAspectRatio: 0.65,
                 ),
                 itemCount: products.length,
                 itemBuilder: (_, i) => _WishlistCard(
                   product: products[i],
                   onRemove: () => onRemove(products[i].id),
-                  onViewProduct: () => onViewProduct(products[i].id),
+                  onViewProduct: () =>
+                      Get.toNamed(AppRoutes.productOf(products[i].id)),
                 ),
               ),
           ],
@@ -207,7 +249,7 @@ class _WishlistCardState extends State<_WishlistCard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Image
+              // ── Image ────────────────────────────────────────────────────
               Expanded(
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(4),
@@ -222,59 +264,44 @@ class _WishlistCardState extends State<_WishlistCard> {
                             ? CachedNetworkImage(
                                 imageUrl: widget.product.primaryImageUrl!,
                                 fit: BoxFit.cover,
-                                placeholder: (_, __) =>
-                                    Container(color: kCream),
-                                errorWidget: (_, __, ___) => Container(
-                                    color: kCream,
-                                    child: const Icon(Icons.image_outlined,
-                                        color: kSlate, size: 32)),
+                                placeholder: (_, __) => const ColoredBox(
+                                    color: AppColors.marcatCream),
+                                errorWidget: (_, __, ___) => const ColoredBox(
+                                    color: AppColors.marcatCream),
                               )
-                            : Container(
-                                color: kCream,
-                                child: const Icon(Icons.image_outlined,
-                                    color: kSlate, size: 32)),
+                            : const ColoredBox(
+                                color: AppColors.marcatCream,
+                                child: Icon(Icons.image_not_supported_outlined,
+                                    color: AppColors.marcatSlate),
+                              ),
                       ),
 
-                      // Remove from wishlist button
-                      Positioned(
-                        top: 10,
-                        right: 10,
-                        child: GestureDetector(
-                          onTap: widget.onRemove,
-                          child: Container(
-                            width: 34,
-                            height: 34,
-                            decoration: const BoxDecoration(
-                              color: kNavy,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.favorite_rounded,
-                                size: 16, color: Colors.white),
-                          ),
+                      // Hover overlay
+                      AnimatedOpacity(
+                        opacity: _hovered ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 200),
+                        child: ColoredBox(
+                          color: AppColors.marcatNavy.withOpacity(0.12),
                         ),
                       ),
 
-                      // "View & Add to Cart" overlay — navigates to detail
+                      // Remove button
                       Positioned(
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        child: AnimatedOpacity(
-                          opacity: _hovered ? 1.0 : 0.0,
-                          duration: const Duration(milliseconds: 200),
+                        top: 8,
+                        right: 8,
+                        child: GestureDetector(
+                          onTap: widget.onRemove,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            color: kNavy.withOpacity(0.85),
-                            child: const Center(
-                              child: Text(
-                                'Select Size & Add',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
+                            width: 32,
+                            height: 32,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.favorite_rounded,
+                              size: 16,
+                              color: AppColors.saleRed,
                             ),
                           ),
                         ),
@@ -285,24 +312,19 @@ class _WishlistCardState extends State<_WishlistCard> {
               ),
 
               const SizedBox(height: 10),
+
+              // ── Product name ─────────────────────────────────────────────
               Text(
                 widget.product.name,
-                maxLines: 1,
+                style: AppTextStyles.titleSmall,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: kNavy,
-                ),
               ),
               const SizedBox(height: 4),
               Text(
                 widget.product.basePrice.toJOD(),
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: kSlate,
-                ),
+                style: AppTextStyles.priceSmall
+                    .copyWith(color: AppColors.marcatGold),
               ),
             ],
           ),

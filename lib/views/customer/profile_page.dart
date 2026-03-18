@@ -7,16 +7,29 @@ import 'package:image_picker/image_picker.dart';
 
 import 'package:marcat/controllers/account_controller.dart';
 import 'package:marcat/controllers/auth_controller.dart';
+import 'package:marcat/core/constants/app_colors.dart';
+import 'package:marcat/core/constants/app_text_styles.dart';
+import 'package:marcat/core/router/app_router.dart';
+import 'package:marcat/models/enums.dart';
 import 'package:marcat/models/loyalty_transaction_model.dart';
 import 'package:marcat/models/user_model.dart';
 
-import '../../models/enums.dart';
 import 'scaffold/app_scaffold.dart';
-import 'shared/brand.dart';
 import 'shared/empty_state.dart';
 import 'shared/marcat_buttons.dart';
 import 'shared/section_header.dart';
-import 'package:marcat/core/router/app_router.dart';
+
+// ── Local colour aliases (always reference AppColors) ─────────────────────────
+const _kNavy = AppColors.marcatNavy;
+const _kGold = AppColors.marcatGold;
+const _kCream = AppColors.marcatCream;
+const _kSlate = AppColors.marcatSlate;
+const _kRed = AppColors.saleRed;
+const _kBorder = AppColors.borderLight;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ProfilePage
+// ─────────────────────────────────────────────────────────────────────────────
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -26,325 +39,237 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  bool isSaving = false;
-  final loyaltyTransactions = <LoyaltyTransactionModel>[];
-  bool loyaltyLoading = false;
-  int activeTab = 0; // 0=profile 1=loyalty 2=security
+  // ── Controllers ───────────────────────────────────────────────────────────
+  final _firstNameCtrl = TextEditingController();
+  final _lastNameCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
+  final _newPwCtrl = TextEditingController();
+  final _confirmPwCtrl = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _pwFormKey = GlobalKey<FormState>();
 
-  // Form controllers
-  late final TextEditingController firstNameCtrl;
-  late final TextEditingController lastNameCtrl;
-  late final TextEditingController phoneCtrl;
-  final formKey = GlobalKey<FormState>();
-
-  // Password change
-  late final TextEditingController currentPwCtrl;
-  late final TextEditingController newPwCtrl;
-  late final TextEditingController confirmPwCtrl;
-  final pwFormKey = GlobalKey<FormState>();
-  bool isChangingPw = false;
+  // ── State ─────────────────────────────────────────────────────────────────
+  int _activeTab = 0;
+  bool _isSaving = false;
+  bool _isChangingPw = false;
+  final _loyaltyTransactions = <LoyaltyTransactionModel>[];
+  bool _loyaltyLoading = false;
 
   AccountController get _accountCtrl => Get.find<AccountController>();
   AuthController get _auth => Get.find<AuthController>();
-  UserModel? get _user => _auth.user;
 
   @override
   void initState() {
     super.initState();
-    firstNameCtrl = TextEditingController();
-    lastNameCtrl = TextEditingController();
-    phoneCtrl = TextEditingController();
-    currentPwCtrl = TextEditingController();
-    newPwCtrl = TextEditingController();
-    confirmPwCtrl = TextEditingController();
-    _populateForm();
+    _loadProfile();
   }
 
   @override
   void dispose() {
-    firstNameCtrl.dispose();
-    lastNameCtrl.dispose();
-    phoneCtrl.dispose();
-    currentPwCtrl.dispose();
-    newPwCtrl.dispose();
-    confirmPwCtrl.dispose();
+    _firstNameCtrl.dispose();
+    _lastNameCtrl.dispose();
+    _phoneCtrl.dispose();
+    _newPwCtrl.dispose();
+    _confirmPwCtrl.dispose();
     super.dispose();
   }
 
-  void _populateForm() {
-    final user = _user;
+  Future<void> _loadProfile() async {
+    final user = _auth.state.value.user;
     if (user == null) return;
-    firstNameCtrl.text = user.firstName;
-    lastNameCtrl.text = user.lastName;
-    phoneCtrl.text = user.phone ?? '';
+    try {
+      await _accountCtrl.loadProfile(user.id);
+      final profile = _accountCtrl.profile.value;
+      if (profile != null && mounted) {
+        _firstNameCtrl.text = profile.firstName;
+        _lastNameCtrl.text = profile.lastName;
+        _phoneCtrl.text = profile.phone ?? '';
+      }
+    } catch (_) {}
   }
 
-  // ── Actions ──────────────────────────────────────────────────────────────────
-
-  Future<void> saveProfile() async {
-    if (!formKey.currentState!.validate()) return;
-    final user = _user;
+  Future<void> _saveProfile() async {
+    if (!_formKey.currentState!.validate()) return;
+    final user = _auth.state.value.user;
     if (user == null) return;
-    if (mounted) setState(() => isSaving = true);
+    setState(() => _isSaving = true);
     try {
       await _accountCtrl.updateUserProfile(user.id, {
-        'first_name': firstNameCtrl.text.trim(),
-        'last_name': lastNameCtrl.text.trim(),
-        'phone': phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim(),
+        'first_name': _firstNameCtrl.text.trim(),
+        'last_name': _lastNameCtrl.text.trim(),
+        'phone': _phoneCtrl.text.trim(),
       });
-      await _auth.refreshAuth();
       Get.snackbar(
-        'Profile Updated',
-        'Your profile has been saved.',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: kNavy,
+        'Saved',
+        'Your profile has been updated.',
+        backgroundColor: AppColors.marcatNavy,
         colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
       );
     } catch (e) {
-      Get.snackbar('Error', e.toString());
+      Get.snackbar('Error', e.toString(),
+          backgroundColor: AppColors.errorRed, colorText: Colors.white);
     } finally {
-      if (mounted) setState(() => isSaving = false);
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
-  Future<void> uploadAvatar() async {
-    final picker = ImagePicker();
-    final file = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 800,
-      imageQuality: 85,
-    );
-    if (file == null) return;
-    final user = _user;
-    if (user == null) return;
+  Future<void> _changePassword() async {
+    if (!_pwFormKey.currentState!.validate()) return;
+    if (_newPwCtrl.text != _confirmPwCtrl.text) {
+      Get.snackbar('Error', 'Passwords do not match.',
+          backgroundColor: AppColors.errorRed, colorText: Colors.white);
+      return;
+    }
+    setState(() => _isChangingPw = true);
+    try {
+      await _auth.updatePassword(_newPwCtrl.text);
+      _newPwCtrl.clear();
+      _confirmPwCtrl.clear();
+      Get.snackbar('Success', 'Password updated successfully.',
+          backgroundColor: AppColors.marcatNavy, colorText: Colors.white);
+    } catch (e) {
+      Get.snackbar('Error', e.toString(),
+          backgroundColor: AppColors.errorRed, colorText: Colors.white);
+    } finally {
+      if (mounted) setState(() => _isChangingPw = false);
+    }
+  }
 
-    if (mounted) setState(() => isSaving = true);
+  Future<void> _uploadAvatar() async {
+    final picker = ImagePicker();
+    final file =
+        await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (file == null) return;
+    final user = _auth.state.value.user;
+    if (user == null) return;
     try {
       final bytes = await file.readAsBytes();
-      final url = await _accountCtrl.uploadAvatar(user.id, bytes);
-      await _accountCtrl.updateUserProfile(user.id, {'avatar_url': url});
-      await _auth.refreshAuth();
+      await _accountCtrl.uploadAvatar(user.id, bytes);
+      Get.snackbar('Success', 'Avatar updated.',
+          backgroundColor: AppColors.marcatNavy, colorText: Colors.white);
     } catch (e) {
       Get.snackbar('Error', e.toString());
-    } finally {
-      if (mounted) setState(() => isSaving = false);
     }
   }
 
-  Future<void> loadLoyaltyTransactions() async {
-    final user = _user;
+  Future<void> _loadLoyalty() async {
+    final user = _auth.state.value.user;
     if (user == null) return;
-    if (mounted) setState(() => loyaltyLoading = true);
+    setState(() => _loyaltyLoading = true);
     try {
-      await _accountCtrl.fetchLoyaltyTransactions(
-        customerId: user.id,
-        pageSize: 20,
-      );
+      await _accountCtrl.fetchLoyaltyTransactions(customerId: user.id);
       if (mounted) {
         setState(() {
-          loyaltyTransactions
+          _loyaltyTransactions
             ..clear()
             ..addAll(_accountCtrl.loyaltyTransactions);
         });
       }
-    } catch (e) {
-      Get.snackbar('Error', e.toString());
+    } catch (_) {
     } finally {
-      if (mounted) setState(() => loyaltyLoading = false);
-    }
-  }
-
-  Future<void> changePassword() async {
-    if (!pwFormKey.currentState!.validate()) return;
-    if (mounted) setState(() => isChangingPw = true);
-    try {
-      await _auth.updatePassword(newPwCtrl.text);
-      currentPwCtrl.clear();
-      newPwCtrl.clear();
-      confirmPwCtrl.clear();
-      Get.snackbar(
-        'Password Changed',
-        'Your password has been updated.',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: kNavy,
-        colorText: Colors.white,
-      );
-    } catch (e) {
-      Get.snackbar('Error', e.toString());
-    } finally {
-      if (mounted) setState(() => isChangingPw = false);
+      if (mounted) setState(() => _loyaltyLoading = false);
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    return CustomerScaffold(
-      page: 'My Profile',
-      pageImage:
-          'https://images.unsplash.com/photo-1551434678-e076c223a692?w=1600&q=80',
-      body: _ProfileBody(
-        user: _user,
-        isSaving: isSaving,
-        loyaltyTransactions: loyaltyTransactions,
-        loyaltyLoading: loyaltyLoading,
-        activeTab: activeTab,
-        firstNameCtrl: firstNameCtrl,
-        lastNameCtrl: lastNameCtrl,
-        phoneCtrl: phoneCtrl,
-        formKey: formKey,
-        currentPwCtrl: currentPwCtrl,
-        newPwCtrl: newPwCtrl,
-        confirmPwCtrl: confirmPwCtrl,
-        pwFormKey: pwFormKey,
-        isChangingPw: isChangingPw,
-        onSaveProfile: saveProfile,
-        onUploadAvatar: uploadAvatar,
-        onLoadLoyalty: loadLoyaltyTransactions,
-        onChangePassword: changePassword,
-        onTabChanged: (idx) => setState(() => activeTab = idx),
-      ),
-    );
-  }
-}
+  Widget build(BuildContext context) => CustomerScaffold(
+        page: 'My Profile',
+        pageImage:
+            'https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=1600&q=80',
+        body: GetBuilder<AuthController>(
+          builder: (auth) {
+            final user = auth.state.value.user;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// _ProfileBody
-// ─────────────────────────────────────────────────────────────────────────────
+            if (user == null) {
+              return EmptyState(
+                icon: Icons.person_off_outlined,
+                title: 'Not Signed In',
+                subtitle: 'Please sign in to view your profile.',
+                actionLabel: 'Sign In',
+                onAction: () => Get.toNamed(AppRoutes.login),
+              );
+            }
 
-class _ProfileBody extends StatelessWidget {
-  final UserModel? user;
-  final bool isSaving;
-  final List<LoyaltyTransactionModel> loyaltyTransactions;
-  final bool loyaltyLoading;
-  final int activeTab;
-  final TextEditingController firstNameCtrl;
-  final TextEditingController lastNameCtrl;
-  final TextEditingController phoneCtrl;
-  final GlobalKey<FormState> formKey;
-  final TextEditingController currentPwCtrl;
-  final TextEditingController newPwCtrl;
-  final TextEditingController confirmPwCtrl;
-  final GlobalKey<FormState> pwFormKey;
-  final bool isChangingPw;
-  final VoidCallback onSaveProfile;
-  final VoidCallback onUploadAvatar;
-  final VoidCallback onLoadLoyalty;
-  final VoidCallback onChangePassword;
-  final ValueChanged<int> onTabChanged;
+            final isDesktop = MediaQuery.sizeOf(context).width > 900;
 
-  const _ProfileBody({
-    required this.user,
-    required this.isSaving,
-    required this.loyaltyTransactions,
-    required this.loyaltyLoading,
-    required this.activeTab,
-    required this.firstNameCtrl,
-    required this.lastNameCtrl,
-    required this.phoneCtrl,
-    required this.formKey,
-    required this.currentPwCtrl,
-    required this.newPwCtrl,
-    required this.confirmPwCtrl,
-    required this.pwFormKey,
-    required this.isChangingPw,
-    required this.onSaveProfile,
-    required this.onUploadAvatar,
-    required this.onLoadLoyalty,
-    required this.onChangePassword,
-    required this.onTabChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final auth = Get.find<AuthController>();
-
-    return Obx(() {
-      final currentUser = auth.user;
-
-      if (currentUser == null) {
-        return EmptyState(
-          icon: Icons.person_outline_rounded,
-          title: 'Sign In to Access Your Profile',
-          subtitle: 'View and edit your personal details.',
-          actionLabel: 'Sign In',
-          onAction: () => Get.toNamed(AppRoutes.login),
-        );
-      }
-
-      final isDesktop = MediaQuery.sizeOf(context).width > 900;
-
-      return FB5Container(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 40),
-          child: isDesktop
-              ? Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      width: 260,
-                      child: _ProfileSidebar(
-                        user: currentUser,
-                        activeTab: activeTab,
-                        onTabChanged: onTabChanged,
-                        onUploadAvatar: onUploadAvatar,
-                        onLoadLoyalty: onLoadLoyalty,
+            return FB5Container(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 40),
+                child: isDesktop
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 260,
+                            child: _ProfileSidebar(
+                              user: user,
+                              activeTab: _activeTab,
+                              onTabChanged: (i) {
+                                setState(() => _activeTab = i);
+                                if (i == 2) _loadLoyalty();
+                              },
+                              onUploadAvatar: _uploadAvatar,
+                            ),
+                          ),
+                          const SizedBox(width: 48),
+                          Expanded(
+                            child: _ProfileContent(
+                              user: user,
+                              activeTab: _activeTab,
+                              isSaving: _isSaving,
+                              isChangingPw: _isChangingPw,
+                              loyaltyTransactions: _loyaltyTransactions,
+                              loyaltyLoading: _loyaltyLoading,
+                              firstNameCtrl: _firstNameCtrl,
+                              lastNameCtrl: _lastNameCtrl,
+                              phoneCtrl: _phoneCtrl,
+                              formKey: _formKey,
+                              newPwCtrl: _newPwCtrl,
+                              confirmPwCtrl: _confirmPwCtrl,
+                              pwFormKey: _pwFormKey,
+                              onSaveProfile: _saveProfile,
+                              onChangePassword: _changePassword,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Column(
+                        children: [
+                          _ProfileSidebar(
+                            user: user,
+                            activeTab: _activeTab,
+                            onTabChanged: (i) {
+                              setState(() => _activeTab = i);
+                              if (i == 2) _loadLoyalty();
+                            },
+                            onUploadAvatar: _uploadAvatar,
+                          ),
+                          const SizedBox(height: 32),
+                          _ProfileContent(
+                            user: user,
+                            activeTab: _activeTab,
+                            isSaving: _isSaving,
+                            isChangingPw: _isChangingPw,
+                            loyaltyTransactions: _loyaltyTransactions,
+                            loyaltyLoading: _loyaltyLoading,
+                            firstNameCtrl: _firstNameCtrl,
+                            lastNameCtrl: _lastNameCtrl,
+                            phoneCtrl: _phoneCtrl,
+                            formKey: _formKey,
+                            newPwCtrl: _newPwCtrl,
+                            confirmPwCtrl: _confirmPwCtrl,
+                            pwFormKey: _pwFormKey,
+                            onSaveProfile: _saveProfile,
+                            onChangePassword: _changePassword,
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 48),
-                    Expanded(
-                      child: _ProfileContent(
-                        user: currentUser,
-                        activeTab: activeTab,
-                        isSaving: isSaving,
-                        loyaltyTransactions: loyaltyTransactions,
-                        loyaltyLoading: loyaltyLoading,
-                        firstNameCtrl: firstNameCtrl,
-                        lastNameCtrl: lastNameCtrl,
-                        phoneCtrl: phoneCtrl,
-                        formKey: formKey,
-                        newPwCtrl: newPwCtrl,
-                        confirmPwCtrl: confirmPwCtrl,
-                        pwFormKey: pwFormKey,
-                        isChangingPw: isChangingPw,
-                        onSaveProfile: onSaveProfile,
-                        onChangePassword: onChangePassword,
-                      ),
-                    ),
-                  ],
-                )
-              : Column(
-                  children: [
-                    _ProfileSidebar(
-                      user: currentUser,
-                      activeTab: activeTab,
-                      onTabChanged: onTabChanged,
-                      onUploadAvatar: onUploadAvatar,
-                      onLoadLoyalty: onLoadLoyalty,
-                    ),
-                    const SizedBox(height: 32),
-                    _ProfileContent(
-                      user: currentUser,
-                      activeTab: activeTab,
-                      isSaving: isSaving,
-                      loyaltyTransactions: loyaltyTransactions,
-                      loyaltyLoading: loyaltyLoading,
-                      firstNameCtrl: firstNameCtrl,
-                      lastNameCtrl: lastNameCtrl,
-                      phoneCtrl: phoneCtrl,
-                      formKey: formKey,
-                      newPwCtrl: newPwCtrl,
-                      confirmPwCtrl: confirmPwCtrl,
-                      pwFormKey: pwFormKey,
-                      isChangingPw: isChangingPw,
-                      onSaveProfile: onSaveProfile,
-                      onChangePassword: onChangePassword,
-                    ),
-                  ],
-                ),
+              ),
+            );
+          },
         ),
       );
-    });
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -357,23 +282,22 @@ class _ProfileSidebar extends StatelessWidget {
     required this.activeTab,
     required this.onTabChanged,
     required this.onUploadAvatar,
-    required this.onLoadLoyalty,
   });
 
   final UserModel user;
   final int activeTab;
   final ValueChanged<int> onTabChanged;
   final VoidCallback onUploadAvatar;
-  final VoidCallback onLoadLoyalty;
 
-  static String _initials(String fn, String ln) =>
-      '${fn.isNotEmpty ? fn[0] : ''}${ln.isNotEmpty ? ln[0] : ''}'
+  String get _initials =>
+      '${user.firstName.isNotEmpty ? user.firstName[0] : ''}'
+              '${user.lastName.isNotEmpty ? user.lastName[0] : ''}'
           .toUpperCase();
 
   @override
   Widget build(BuildContext context) => Column(
         children: [
-          // Avatar
+          // ── Avatar ───────────────────────────────────────────────────────
           Stack(
             alignment: Alignment.bottomRight,
             children: [
@@ -382,22 +306,24 @@ class _ProfileSidebar extends StatelessWidget {
                 height: 100,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: kNavy,
-                  border: Border.all(color: kGold.withOpacity(0.4), width: 3),
+                  color: _kNavy,
+                  border: Border.all(color: _kGold.withOpacity(0.4), width: 3),
                   image: user.avatarUrl != null
                       ? DecorationImage(
                           image: NetworkImage(user.avatarUrl!),
-                          fit: BoxFit.cover)
+                          fit: BoxFit.cover,
+                        )
                       : null,
                 ),
                 child: user.avatarUrl == null
                     ? Center(
                         child: Text(
-                          _initials(user.firstName, user.lastName),
+                          _initials,
                           style: const TextStyle(
-                            color: Colors.white,
+                            fontFamily: 'PlayfairDisplay',
                             fontSize: 28,
                             fontWeight: FontWeight.w700,
+                            color: Colors.white,
                           ),
                         ),
                       )
@@ -406,72 +332,78 @@ class _ProfileSidebar extends StatelessWidget {
               GestureDetector(
                 onTap: onUploadAvatar,
                 child: Container(
-                  padding: const EdgeInsets.all(6),
+                  width: 30,
+                  height: 30,
                   decoration: const BoxDecoration(
-                    color: kGold,
+                    color: _kGold,
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.camera_alt_rounded,
-                      size: 14, color: kNavy),
+                      size: 16, color: Colors.white),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-
-          // Name
           Text(
-            user.fullName,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: kNavy,
-            ),
+            '${user.firstName} ${user.lastName}',
+            style: AppTextStyles.titleMedium,
+            textAlign: TextAlign.center,
           ),
-          if (user.phone != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              user.phone!,
-              style: const TextStyle(fontSize: 13, color: kSlate),
+          const SizedBox(height: 4),
+          Text(
+            user.phone ?? '',
+            style: const TextStyle(
+              fontFamily: 'IBMPlexSansArabic',
+              fontSize: 13,
+              color: _kSlate,
             ),
-          ],
-          const SizedBox(height: 24),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 28),
 
-          // Tab navigation
+          // ── Navigation tabs ──────────────────────────────────────────────
           _SidebarTab(
             icon: Icons.person_outline_rounded,
-            label: 'Edit Profile',
+            label: 'Profile',
             active: activeTab == 0,
             onTap: () => onTabChanged(0),
           ),
           _SidebarTab(
-            icon: Icons.stars_rounded,
-            label: 'Loyalty Points',
+            icon: Icons.lock_outline_rounded,
+            label: 'Password',
             active: activeTab == 1,
-            onTap: () {
-              onTabChanged(1);
-              onLoadLoyalty();
-            },
+            onTap: () => onTabChanged(1),
           ),
           _SidebarTab(
-            icon: Icons.lock_outline_rounded,
-            label: 'Security',
+            icon: Icons.stars_rounded,
+            label: 'Loyalty Points',
             active: activeTab == 2,
             onTap: () => onTabChanged(2),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+          const Divider(color: _kBorder),
+          const SizedBox(height: 12),
 
-          // Sign out
+          // ── Sign out ────────────────────────────────────────────────────
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: () => Get.find<AuthController>().signOut(),
+              onPressed: () async {
+                await Get.find<AuthController>().signOut();
+                Get.offAllNamed(AppRoutes.home);
+              },
               icon: const Icon(Icons.logout_rounded, size: 16),
-              label: const Text('Sign Out',
-                  style: TextStyle(fontWeight: FontWeight.w700)),
+              label: const Text(
+                'Sign Out',
+                style: TextStyle(
+                  fontFamily: 'IBMPlexSansArabic',
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               style: OutlinedButton.styleFrom(
-                foregroundColor: kRed,
-                side: const BorderSide(color: kRed),
+                foregroundColor: _kRed,
+                side: const BorderSide(color: _kRed),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8)),
                 padding:
@@ -482,6 +414,10 @@ class _ProfileSidebar extends StatelessWidget {
         ],
       );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _SidebarTab
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _SidebarTab extends StatelessWidget {
   const _SidebarTab({
@@ -504,19 +440,20 @@ class _SidebarTab extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 4),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: active ? kNavy : Colors.transparent,
+            color: active ? _kNavy : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
             children: [
-              Icon(icon, size: 18, color: active ? Colors.white : kSlate),
+              Icon(icon, size: 18, color: active ? Colors.white : _kSlate),
               const SizedBox(width: 10),
               Text(
                 label,
                 style: TextStyle(
+                  fontFamily: 'IBMPlexSansArabic',
                   fontSize: 14,
                   fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                  color: active ? Colors.white : kSlate,
+                  color: active ? Colors.white : _kSlate,
                 ),
               ),
             ],
@@ -534,6 +471,7 @@ class _ProfileContent extends StatelessWidget {
     required this.user,
     required this.activeTab,
     required this.isSaving,
+    required this.isChangingPw,
     required this.loyaltyTransactions,
     required this.loyaltyLoading,
     required this.firstNameCtrl,
@@ -543,7 +481,6 @@ class _ProfileContent extends StatelessWidget {
     required this.newPwCtrl,
     required this.confirmPwCtrl,
     required this.pwFormKey,
-    required this.isChangingPw,
     required this.onSaveProfile,
     required this.onChangePassword,
   });
@@ -551,6 +488,7 @@ class _ProfileContent extends StatelessWidget {
   final UserModel user;
   final int activeTab;
   final bool isSaving;
+  final bool isChangingPw;
   final List<LoyaltyTransactionModel> loyaltyTransactions;
   final bool loyaltyLoading;
   final TextEditingController firstNameCtrl;
@@ -560,62 +498,55 @@ class _ProfileContent extends StatelessWidget {
   final TextEditingController newPwCtrl;
   final TextEditingController confirmPwCtrl;
   final GlobalKey<FormState> pwFormKey;
-  final bool isChangingPw;
   final VoidCallback onSaveProfile;
   final VoidCallback onChangePassword;
 
   @override
   Widget build(BuildContext context) {
-    switch (activeTab) {
-      case 1:
-        return _LoyaltyTab(
+    return switch (activeTab) {
+      1 => _PasswordTab(
+          pwFormKey: pwFormKey,
+          newPwCtrl: newPwCtrl,
+          confirmPwCtrl: confirmPwCtrl,
+          isChangingPw: isChangingPw,
+          onChangePassword: onChangePassword,
+        ),
+      2 => _LoyaltyTab(
           loyaltyTransactions: loyaltyTransactions,
           loyaltyLoading: loyaltyLoading,
           user: user,
-        );
-      case 2:
-        return _SecurityTab(
-          newPwCtrl: newPwCtrl,
-          confirmPwCtrl: confirmPwCtrl,
-          pwFormKey: pwFormKey,
-          isChangingPw: isChangingPw,
-          onChangePassword: onChangePassword,
-        );
-      default:
-        return _EditProfileTab(
-          user: user,
-          isSaving: isSaving,
+        ),
+      _ => _InfoTab(
+          formKey: formKey,
           firstNameCtrl: firstNameCtrl,
           lastNameCtrl: lastNameCtrl,
           phoneCtrl: phoneCtrl,
-          formKey: formKey,
+          isSaving: isSaving,
           onSaveProfile: onSaveProfile,
-        );
-    }
+        ),
+    };
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _EditProfileTab
+// _InfoTab
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _EditProfileTab extends StatelessWidget {
-  const _EditProfileTab({
-    required this.user,
-    required this.isSaving,
+class _InfoTab extends StatelessWidget {
+  const _InfoTab({
+    required this.formKey,
     required this.firstNameCtrl,
     required this.lastNameCtrl,
     required this.phoneCtrl,
-    required this.formKey,
+    required this.isSaving,
     required this.onSaveProfile,
   });
 
-  final UserModel user;
-  final bool isSaving;
+  final GlobalKey<FormState> formKey;
   final TextEditingController firstNameCtrl;
   final TextEditingController lastNameCtrl;
   final TextEditingController phoneCtrl;
-  final GlobalKey<FormState> formKey;
+  final bool isSaving;
   final VoidCallback onSaveProfile;
 
   @override
@@ -624,54 +555,130 @@ class _EditProfileTab extends StatelessWidget {
         children: [
           const SectionHeader(
             eyebrow: 'Account',
-            title: 'Edit Profile',
-            subtitle: 'Update your personal information.',
+            title: 'Personal Info',
+            subtitle: 'Update your name and contact details.',
           ),
-          const SizedBox(height: 24),
-          Form(
-            key: formKey,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: firstNameCtrl,
-                        decoration:
-                            const InputDecoration(labelText: 'First Name'),
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Required' : null,
+          const SizedBox(height: 28),
+          Container(
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _kBorder),
+            ),
+            child: Form(
+              key: formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _ProfileField(
+                          controller: firstNameCtrl,
+                          label: 'First Name',
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? 'Required'
+                              : null,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextFormField(
-                        controller: lastNameCtrl,
-                        decoration:
-                            const InputDecoration(labelText: 'Last Name'),
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Required' : null,
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _ProfileField(
+                          controller: lastNameCtrl,
+                          label: 'Last Name',
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? 'Required'
+                              : null,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: phoneCtrl,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(labelText: 'Phone Number'),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: PrimaryButton(
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _ProfileField(
+                    controller: phoneCtrl,
+                    label: 'Phone Number',
+                    keyboardType: TextInputType.phone,
+                  ),
+                  const SizedBox(height: 24),
+                  PrimaryButton(
                     label: 'Save Changes',
                     loading: isSaving,
                     onPressed: onSaveProfile,
                   ),
-                ),
-              ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _PasswordTab
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _PasswordTab extends StatelessWidget {
+  const _PasswordTab({
+    required this.pwFormKey,
+    required this.newPwCtrl,
+    required this.confirmPwCtrl,
+    required this.isChangingPw,
+    required this.onChangePassword,
+  });
+
+  final GlobalKey<FormState> pwFormKey;
+  final TextEditingController newPwCtrl;
+  final TextEditingController confirmPwCtrl;
+  final bool isChangingPw;
+  final VoidCallback onChangePassword;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionHeader(
+            eyebrow: 'Security',
+            title: 'Change Password',
+            subtitle: 'Keep your account secure with a strong password.',
+          ),
+          const SizedBox(height: 28),
+          Container(
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _kBorder),
+            ),
+            child: Form(
+              key: pwFormKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _ProfileField(
+                    controller: newPwCtrl,
+                    label: 'New Password',
+                    obscureText: true,
+                    validator: (v) => (v == null || v.length < 8)
+                        ? 'At least 8 characters required'
+                        : null,
+                  ),
+                  const SizedBox(height: 16),
+                  _ProfileField(
+                    controller: confirmPwCtrl,
+                    label: 'Confirm Password',
+                    obscureText: true,
+                    validator: (v) =>
+                        (v == null || v.isEmpty) ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 24),
+                  PrimaryButton(
+                    label: 'Update Password',
+                    loading: isChangingPw,
+                    onPressed: onChangePassword,
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -708,16 +715,16 @@ class _LoyaltyTab extends StatelessWidget {
         ),
         const SizedBox(height: 24),
 
-        // Points balance card
+        // ── Points balance card ────────────────────────────────────────────
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: kNavy,
+            color: _kNavy,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
             children: [
-              const Icon(Icons.stars_rounded, color: kGold, size: 36),
+              const Icon(Icons.stars_rounded, color: _kGold, size: 36),
               const SizedBox(width: 16),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -725,6 +732,7 @@ class _LoyaltyTab extends StatelessWidget {
                   Text(
                     '${customer?.loyaltyPoints ?? 0} pts',
                     style: const TextStyle(
+                      fontFamily: 'IBMPlexMono',
                       color: Colors.white,
                       fontSize: 28,
                       fontWeight: FontWeight.w700,
@@ -732,11 +740,12 @@ class _LoyaltyTab extends StatelessWidget {
                   ),
                   Text(
                     customer?.loyaltyTier.dbValue.toUpperCase() ?? 'BRONZE',
-                    style: TextStyle(
-                      color: kGold.withOpacity(0.8),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1.5,
+                    style: const TextStyle(
+                      fontFamily: 'IBMPlexSansArabic',
+                      color: _kGold,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 2,
                     ),
                   ),
                 ],
@@ -744,131 +753,186 @@ class _LoyaltyTab extends StatelessWidget {
             ],
           ),
         ),
+
         const SizedBox(height: 24),
 
-        // Transactions list
-        if (loyaltyLoading)
-          const Center(child: CircularProgressIndicator())
-        else if (loyaltyTransactions.isEmpty)
-          EmptyState(
-            icon: Icons.receipt_long_outlined,
-            title: 'No Transactions Yet',
-            subtitle: 'Points earned from purchases appear here.',
-          )
-        else
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: loyaltyTransactions.length,
-            separatorBuilder: (_, __) =>
-                const Divider(height: 1, color: kCream),
-            itemBuilder: (_, i) {
-              final tx = loyaltyTransactions[i];
-              final isEarned = tx.points > 0;
-              return ListTile(
-                leading: Icon(
-                  isEarned
-                      ? Icons.add_circle_outline_rounded
-                      : Icons.remove_circle_outline_rounded,
-                  color: isEarned ? kGold : kRed,
-                ),
-                title: Text(
-                  tx.description ??
-                      (isEarned ? 'Points earned' : 'Points redeemed'),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: kNavy,
-                  ),
-                ),
-                subtitle: Text(
-                  '${tx.createdAt.day}/${tx.createdAt.month}/${tx.createdAt.year}',
-                  style: const TextStyle(fontSize: 12, color: kSlate),
-                ),
-                trailing: Text(
-                  '${isEarned ? '+' : ''}${tx.points} pts',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: isEarned ? kGold : kRed,
-                  ),
-                ),
-              );
-            },
+        // ── Transaction history ────────────────────────────────────────────
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _kBorder),
           ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Transaction History', style: AppTextStyles.titleMedium),
+              const SizedBox(height: 16),
+              const Divider(color: _kBorder),
+              if (loyaltyLoading)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 32),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: _kGold),
+                  ),
+                )
+              else if (loyaltyTransactions.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: Text(
+                      'No transactions yet.',
+                      style: TextStyle(
+                        fontFamily: 'IBMPlexSansArabic',
+                        color: _kSlate,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: loyaltyTransactions.length,
+                  separatorBuilder: (_, __) =>
+                      const Divider(color: _kBorder, height: 1),
+                  itemBuilder: (_, i) =>
+                      _LoyaltyRow(tx: loyaltyTransactions[i]),
+                ),
+            ],
+          ),
+        ),
       ],
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// _SecurityTab
-// ─────────────────────────────────────────────────────────────────────────────
+class _LoyaltyRow extends StatelessWidget {
+  const _LoyaltyRow({required this.tx});
 
-class _SecurityTab extends StatelessWidget {
-  const _SecurityTab({
-    required this.newPwCtrl,
-    required this.confirmPwCtrl,
-    required this.pwFormKey,
-    required this.isChangingPw,
-    required this.onChangePassword,
-  });
-
-  final TextEditingController newPwCtrl;
-  final TextEditingController confirmPwCtrl;
-  final GlobalKey<FormState> pwFormKey;
-  final bool isChangingPw;
-  final VoidCallback onChangePassword;
+  final LoyaltyTransactionModel tx;
 
   @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SectionHeader(
-            eyebrow: 'Security',
-            title: 'Change Password',
-            subtitle: 'Choose a strong password to keep your account safe.',
-          ),
-          const SizedBox(height: 24),
-          Form(
-            key: pwFormKey,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
-            child: Column(
-              children: [
-                TextFormField(
-                  controller: newPwCtrl,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: 'New Password'),
-                  validator: (v) {
-                    if (v == null || v.length < 8) {
-                      return 'Password must be at least 8 characters';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: confirmPwCtrl,
-                  obscureText: true,
-                  decoration:
-                      const InputDecoration(labelText: 'Confirm New Password'),
-                  validator: (v) {
-                    if (v != newPwCtrl.text) return 'Passwords do not match';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: PrimaryButton(
-                    label: 'Update Password',
-                    loading: isChangingPw,
-                    onPressed: onChangePassword,
-                  ),
-                ),
-              ],
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            Icon(
+              tx.points > 0
+                  ? Icons.add_circle_outline_rounded
+                  : Icons.remove_circle_outline_rounded,
+              size: 18,
+              color: tx.points > 0 ? AppColors.successGreen : AppColors.saleRed,
             ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    tx.description ?? 'Points transaction',
+                    style: AppTextStyles.bodyMedium,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    _formatDate(tx.createdAt),
+                    style: AppTextStyles.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              '${tx.points > 0 ? '+' : ''}${tx.points} pts',
+              style: AppTextStyles.priceSmall.copyWith(
+                color:
+                    tx.points > 0 ? AppColors.successGreen : AppColors.saleRed,
+              ),
+            ),
+          ],
+        ),
+      );
+
+  String _formatDate(DateTime dt) {
+    final local = dt.toLocal();
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+    return '${local.day} ${months[local.month - 1]} ${local.year}';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _ProfileField  (shared text form field)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ProfileField extends StatelessWidget {
+  const _ProfileField({
+    required this.controller,
+    required this.label,
+    this.validator,
+    this.keyboardType,
+    this.obscureText = false,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final String? Function(String?)? validator;
+  final TextInputType? keyboardType;
+  final bool obscureText;
+
+  @override
+  Widget build(BuildContext context) => TextFormField(
+        controller: controller,
+        keyboardType: keyboardType,
+        obscureText: obscureText,
+        validator: validator,
+        style: const TextStyle(
+          fontFamily: 'IBMPlexSansArabic',
+          fontSize: 14,
+          color: _kNavy,
+        ),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: const TextStyle(
+            fontFamily: 'IBMPlexSansArabic',
+            fontSize: 13,
+            color: _kSlate,
           ),
-        ],
+          filled: true,
+          fillColor: _kCream,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: _kBorder),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: _kBorder),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: _kNavy, width: 1.5),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: _kRed),
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
       );
 }
