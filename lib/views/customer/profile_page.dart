@@ -9,15 +9,17 @@ import 'package:marcat/controllers/account_controller.dart';
 import 'package:marcat/controllers/auth_controller.dart';
 import 'package:marcat/core/constants/app_colors.dart';
 import 'package:marcat/core/constants/app_text_styles.dart';
+import 'package:marcat/core/extensions/currency_extensions.dart';
+import 'package:marcat/core/extensions/date_extensions.dart';
 import 'package:marcat/core/router/app_router.dart';
 import 'package:marcat/models/enums.dart';
 import 'package:marcat/models/loyalty_transaction_model.dart';
 import 'package:marcat/models/user_model.dart';
 
 import 'scaffold/app_scaffold.dart';
-import 'shared/brand.dart'; // ✅ single source of colour constants
-import 'shared/empty_state.dart';
+import 'shared/brand.dart';
 import 'shared/buttons.dart';
+import 'shared/empty_state.dart';
 import 'shared/section_header.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -51,6 +53,7 @@ class _ProfilePageState extends State<ProfilePage> {
   AccountController get _accountCtrl => Get.find<AccountController>();
   AuthController get _auth => Get.find<AuthController>();
 
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
@@ -67,6 +70,8 @@ class _ProfilePageState extends State<ProfilePage> {
     super.dispose();
   }
 
+  // ── Loaders ───────────────────────────────────────────────────────────────
+
   Future<void> _loadProfile() async {
     final user = _auth.state.value.user;
     if (user == null) return;
@@ -74,40 +79,58 @@ class _ProfilePageState extends State<ProfilePage> {
       await _accountCtrl.loadProfile(user.id);
       final profile = _accountCtrl.profile.value;
       if (profile != null && mounted) {
-        _firstNameCtrl.text = profile.firstName;
-        _lastNameCtrl.text = profile.lastName;
-        _phoneCtrl.text = profile.phone ?? '';
+        setState(() {
+          _firstNameCtrl.text = profile.firstName;
+          _lastNameCtrl.text = profile.lastName;
+          _phoneCtrl.text = profile.phone ?? '';
+        });
       }
     } catch (_) {}
   }
 
+  Future<void> _loadLoyalty() async {
+    final uid = _auth.state.value.user?.id;
+    if (uid == null) return;
+    if (mounted) setState(() => _loyaltyLoading = true);
+    try {
+      final txns = await _accountCtrl.fetchLoyaltyTransactions(uid);
+      if (mounted) {
+        setState(() {
+          _loyaltyTransactions
+            ..clear()
+            ..addAll(txns);
+          _loyaltyLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loyaltyLoading = false);
+    }
+  }
+
+  // ── Actions ───────────────────────────────────────────────────────────────
+
   Future<void> _saveProfile() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    if (mounted) setState(() => _isSaving = true);
+    final uid = _auth.state.value.user?.id;
+    if (uid == null) return;
+    setState(() => _isSaving = true);
     try {
-      final user = _auth.state.value.user;
-      if (user == null) return;
-      await _accountCtrl.updateUserProfile(
-        user.id,
-        {
-          'first_name': _firstNameCtrl.text.trim(),
-          'last_name': _lastNameCtrl.text.trim(),
-          'phone': _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
-        },
+      await _accountCtrl.updateProfile(
+        uid,
+        firstName: _firstNameCtrl.text.trim(),
+        lastName: _lastNameCtrl.text.trim(),
+        phone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
       );
       if (mounted) {
         Get.snackbar(
-          'Profile Updated',
-          'Your profile has been saved.',
-          backgroundColor: AppColors.successGreen,
+          'Saved',
+          'Profile updated successfully.',
+          backgroundColor: kNavy,
           colorText: Colors.white,
         );
       }
     } catch (e) {
-      if (mounted) {
-        Get.snackbar('Error', e.toString(),
-            backgroundColor: AppColors.errorRed, colorText: Colors.white);
-      }
+      if (mounted) Get.snackbar('Error', e.toString());
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -116,162 +139,146 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _changePassword() async {
     if (!(_pwFormKey.currentState?.validate() ?? false)) return;
     if (_newPwCtrl.text != _confirmPwCtrl.text) {
-      Get.snackbar('Mismatch', 'Passwords do not match.',
-          backgroundColor: AppColors.errorRed, colorText: Colors.white);
+      Get.snackbar('Mismatch', 'Passwords do not match.');
       return;
     }
-    if (mounted) setState(() => _isChangingPw = true);
+    setState(() => _isChangingPw = true);
     try {
       await _auth.updatePassword(_newPwCtrl.text);
       _newPwCtrl.clear();
       _confirmPwCtrl.clear();
       if (mounted) {
         Get.snackbar(
-          'Password Updated',
-          'Your password has been changed.',
-          backgroundColor: AppColors.successGreen,
+          'Done',
+          'Password changed successfully.',
+          backgroundColor: kNavy,
           colorText: Colors.white,
         );
       }
     } catch (e) {
-      if (mounted) {
-        Get.snackbar('Error', e.toString(),
-            backgroundColor: AppColors.errorRed, colorText: Colors.white);
-      }
+      if (mounted) Get.snackbar('Error', e.toString());
     } finally {
       if (mounted) setState(() => _isChangingPw = false);
     }
   }
 
-  Future<void> _uploadAvatar() async {
+  Future<void> _pickAvatar() async {
     final picker = ImagePicker();
-    final xFile = await picker.pickImage(source: ImageSource.gallery);
-    if (xFile == null) return;
-    final user = _auth.state.value.user;
-    if (user == null) return;
+    final xfile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+      maxWidth: 800,
+    );
+    if (xfile == null) return;
+    final uid = _auth.state.value.user?.id;
+    if (uid == null) return;
     try {
-      final bytes = await xFile.readAsBytes();
-      await _accountCtrl.uploadAvatar(user.id, bytes);
-      if (mounted) setState(() {});
+      await _accountCtrl.uploadAvatar(uid, xfile.path);
     } catch (e) {
-      if (mounted) {
-        Get.snackbar('Error', e.toString(),
-            backgroundColor: AppColors.errorRed, colorText: Colors.white);
-      }
+      if (mounted) Get.snackbar('Error', e.toString());
     }
   }
 
-  Future<void> _loadLoyalty() async {
-    final user = _auth.state.value.user;
-    if (user == null) return;
-    if (mounted) setState(() => _loyaltyLoading = true);
-    try {
-      await _accountCtrl.fetchLoyaltyTransactions(customerId: user.id);
-      if (mounted) {
-        setState(() {
-          _loyaltyTransactions
-            ..clear()
-            ..addAll(_accountCtrl.loyaltyTransactions);
-        });
-      }
-    } catch (_) {
-    } finally {
-      if (mounted) setState(() => _loyaltyLoading = false);
+  void _onTabChanged(int tab) {
+    setState(() => _activeTab = tab);
+    if (tab == 2 && _loyaltyTransactions.isEmpty) {
+      _loadLoyalty();
     }
   }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     return CustomerScaffold(
       page: 'My Profile',
+      pageImage:
+          'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1600&q=80',
       body: Obx(() {
         final user = _auth.state.value.user;
         if (user == null) {
           return EmptyState(
-            icon: Icons.person_outline,
-            title: 'Not Signed In',
+            icon: Icons.lock_outline_rounded,
+            title: 'Sign In Required',
+            subtitle: 'Please sign in to view your profile.',
             actionLabel: 'Sign In',
             onAction: () => Get.toNamed(AppRoutes.login),
           );
         }
-
-        final isDesktop = MediaQuery.sizeOf(context).width > 900;
-
-        return FB5Container(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 40),
-            child: isDesktop
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: 280,
-                        child: _ProfileSidebar(
-                          user: user,
-                          activeTab: _activeTab,
-                          onTabChanged: (i) {
-                            setState(() => _activeTab = i);
-                            if (i == 2) _loadLoyalty();
-                          },
-                          onUploadAvatar: _uploadAvatar,
-                        ),
-                      ),
-                      const SizedBox(width: 40),
-                      Expanded(
-                        child: _ProfileContent(
-                          user: user,
-                          activeTab: _activeTab,
-                          isSaving: _isSaving,
-                          isChangingPw: _isChangingPw,
-                          loyaltyTransactions: _loyaltyTransactions,
-                          loyaltyLoading: _loyaltyLoading,
-                          firstNameCtrl: _firstNameCtrl,
-                          lastNameCtrl: _lastNameCtrl,
-                          phoneCtrl: _phoneCtrl,
-                          formKey: _formKey,
-                          newPwCtrl: _newPwCtrl,
-                          confirmPwCtrl: _confirmPwCtrl,
-                          pwFormKey: _pwFormKey,
-                          onSaveProfile: _saveProfile,
-                          onChangePassword: _changePassword,
-                        ),
-                      ),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      _ProfileSidebar(
-                        user: user,
-                        activeTab: _activeTab,
-                        onTabChanged: (i) {
-                          setState(() => _activeTab = i);
-                          if (i == 2) _loadLoyalty();
-                        },
-                        onUploadAvatar: _uploadAvatar,
-                      ),
-                      const SizedBox(height: 32),
-                      _ProfileContent(
-                        user: user,
-                        activeTab: _activeTab,
-                        isSaving: _isSaving,
-                        isChangingPw: _isChangingPw,
-                        loyaltyTransactions: _loyaltyTransactions,
-                        loyaltyLoading: _loyaltyLoading,
-                        firstNameCtrl: _firstNameCtrl,
-                        lastNameCtrl: _lastNameCtrl,
-                        phoneCtrl: _phoneCtrl,
-                        formKey: _formKey,
-                        newPwCtrl: _newPwCtrl,
-                        confirmPwCtrl: _confirmPwCtrl,
-                        pwFormKey: _pwFormKey,
-                        onSaveProfile: _saveProfile,
-                        onChangePassword: _changePassword,
-                      ),
-                    ],
-                  ),
-          ),
-        );
+        return _buildContent(user);
       }),
+    );
+  }
+
+  Widget _buildContent(UserModel user) {
+    final isDesktop = MediaQuery.sizeOf(context).width > 900;
+
+    return FB5Container(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        child: isDesktop
+            ? FB5Row(
+                children: [
+                  FB5Col(
+                    classNames: 'col-lg-3 col-12',
+                    child: _ProfileSidebar(
+                      user: user,
+                      activeTab: _activeTab,
+                      onTabChanged: _onTabChanged,
+                      onPickAvatar: _pickAvatar,
+                    ),
+                  ),
+                  FB5Col(
+                    classNames: 'col-lg-9 col-12',
+                    child: _ProfileContent(
+                      user: user,
+                      activeTab: _activeTab,
+                      isSaving: _isSaving,
+                      isChangingPw: _isChangingPw,
+                      loyaltyTransactions: _loyaltyTransactions,
+                      loyaltyLoading: _loyaltyLoading,
+                      firstNameCtrl: _firstNameCtrl,
+                      lastNameCtrl: _lastNameCtrl,
+                      phoneCtrl: _phoneCtrl,
+                      newPwCtrl: _newPwCtrl,
+                      confirmPwCtrl: _confirmPwCtrl,
+                      formKey: _formKey,
+                      pwFormKey: _pwFormKey,
+                      onSaveProfile: _saveProfile,
+                      onChangePassword: _changePassword,
+                    ),
+                  ),
+                ],
+              )
+            : Column(
+                children: [
+                  _ProfileSidebar(
+                    user: user,
+                    activeTab: _activeTab,
+                    onTabChanged: _onTabChanged,
+                    onPickAvatar: _pickAvatar,
+                  ),
+                  const SizedBox(height: 24),
+                  _ProfileContent(
+                    user: user,
+                    activeTab: _activeTab,
+                    isSaving: _isSaving,
+                    isChangingPw: _isChangingPw,
+                    loyaltyTransactions: _loyaltyTransactions,
+                    loyaltyLoading: _loyaltyLoading,
+                    firstNameCtrl: _firstNameCtrl,
+                    lastNameCtrl: _lastNameCtrl,
+                    phoneCtrl: _phoneCtrl,
+                    newPwCtrl: _newPwCtrl,
+                    confirmPwCtrl: _confirmPwCtrl,
+                    formKey: _formKey,
+                    pwFormKey: _pwFormKey,
+                    onSaveProfile: _saveProfile,
+                    onChangePassword: _changePassword,
+                  ),
+                ],
+              ),
+      ),
     );
   }
 }
@@ -285,55 +292,57 @@ class _ProfileSidebar extends StatelessWidget {
     required this.user,
     required this.activeTab,
     required this.onTabChanged,
-    required this.onUploadAvatar,
+    required this.onPickAvatar,
   });
 
   final UserModel user;
   final int activeTab;
   final ValueChanged<int> onTabChanged;
-  final VoidCallback onUploadAvatar;
+  final VoidCallback onPickAvatar;
 
-  String get _initials =>
-      '${user.firstName.isNotEmpty ? user.firstName[0].toUpperCase() : ''}'
-      '${user.lastName.isNotEmpty ? user.lastName[0].toUpperCase() : ''}';
+  String get _initials {
+    final f = user.firstName.isNotEmpty ? user.firstName[0].toUpperCase() : '';
+    final l = user.lastName.isNotEmpty ? user.lastName[0].toUpperCase() : '';
+    return '$f$l'.isEmpty ? 'U' : '$f$l';
+  }
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: kBorder),
         ),
         child: Column(
           children: [
-            // ── Avatar ────────────────────────────────────────────────────
+            // ── Avatar ──────────────────────────────────────────────────
             GestureDetector(
-              onTap: onUploadAvatar,
+              onTap: onPickAvatar,
               child: Stack(
                 alignment: Alignment.bottomRight,
                 children: [
                   CircleAvatar(
                     radius: 44,
-                    backgroundColor: kGold.withAlpha(51),
+                    backgroundColor: kGold.withAlpha(40),
                     backgroundImage: user.avatarUrl != null
                         ? NetworkImage(user.avatarUrl!)
                         : null,
                     child: user.avatarUrl == null
                         ? Text(
-                            _initials.isNotEmpty ? _initials : 'U',
+                            _initials,
                             style: const TextStyle(
                               fontFamily: 'PlayfairDisplay',
-                              fontSize: 22,
+                              fontSize: 24,
                               fontWeight: FontWeight.w700,
-                              color: kGold,
+                              color: kNavy,
                             ),
                           )
                         : null,
                   ),
                   Container(
-                    width: 26,
-                    height: 26,
+                    width: 28,
+                    height: 28,
                     decoration: const BoxDecoration(
                       color: kNavy,
                       shape: BoxShape.circle,
@@ -347,66 +356,57 @@ class _ProfileSidebar extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
-            // ── Name & role ───────────────────────────────────────────────
+            // ── Name ─────────────────────────────────────────────────────
             Text(
-              user.fullName,
-              style: AppTextStyles.titleLarge,
+              '${user.firstName} ${user.lastName}',
+              style: AppTextStyles.titleMedium,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 4),
-            Obx(() {
-              final customer = Get.find<AccountController>().customer.value;
-              return customer != null
-                  ? _LoyaltyBadge(tier: customer.loyaltyTier)
-                  : const SizedBox.shrink();
-            }),
+            Text(
+              user.email,
+              style: AppTextStyles.bodySmall.copyWith(color: kSlate),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 20),
+            const Divider(color: kBorder, height: 1),
+            const SizedBox(height: 16),
 
-            const SizedBox(height: 24),
-            const Divider(color: kBorder),
+            // ── Tab navigation ───────────────────────────────────────────
+            ...[
+              (0, Icons.person_outline, 'Personal Info'),
+              (1, Icons.lock_outline, 'Security'),
+              (2, Icons.stars_rounded, 'Loyalty'),
+              (3, Icons.location_on_outlined, 'Addresses'),
+            ].map(
+              (t) => _SidebarTab(
+                index: t.$1,
+                icon: t.$2,
+                label: t.$3,
+                active: activeTab == t.$1,
+                onTap: () => onTabChanged(t.$1),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+            const Divider(color: kBorder, height: 1),
             const SizedBox(height: 12),
 
-            // ── Tab navigation ────────────────────────────────────────────
-            _SidebarTab(
-              icon: Icons.person_outline_rounded,
-              label: 'Personal Info',
-              active: activeTab == 0,
-              onTap: () => onTabChanged(0),
-            ),
-            _SidebarTab(
-              icon: Icons.lock_outline_rounded,
-              label: 'Password',
-              active: activeTab == 1,
-              onTap: () => onTabChanged(1),
-            ),
-            _SidebarTab(
-              icon: Icons.stars_rounded,
-              label: 'Loyalty Points',
-              active: activeTab == 2,
-              onTap: () => onTabChanged(2),
-            ),
-            _SidebarTab(
-              icon: Icons.receipt_long_outlined,
-              label: 'My Orders',
-              active: false,
-              onTap: () => Get.toNamed(AppRoutes.orders),
-            ),
-
-            const SizedBox(height: 12),
-            const Divider(color: kBorder),
-            const SizedBox(height: 12),
-
-            // ── Sign out ──────────────────────────────────────────────────
+            // ── Sign out ─────────────────────────────────────────────────
             GestureDetector(
               onTap: () => Get.find<AuthController>().signOut(),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.logout_rounded, size: 18, color: kSlate),
-                  const SizedBox(width: 10),
+                  const Icon(Icons.logout_rounded, size: 16, color: kSlate),
+                  const SizedBox(width: 8),
                   Text(
                     'Sign Out',
-                    style: AppTextStyles.bodyMedium.copyWith(color: kSlate),
+                    style: AppTextStyles.bodySmall.copyWith(color: kSlate),
                   ),
                 ],
               ),
@@ -418,12 +418,14 @@ class _ProfileSidebar extends StatelessWidget {
 
 class _SidebarTab extends StatelessWidget {
   const _SidebarTab({
+    required this.index,
     required this.icon,
     required this.label,
     required this.active,
     required this.onTap,
   });
 
+  final int index;
   final IconData icon;
   final String label;
   final bool active;
@@ -432,7 +434,8 @@ class _SidebarTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) => GestureDetector(
         onTap: onTap,
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
           margin: const EdgeInsets.only(bottom: 4),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
@@ -440,7 +443,6 @@ class _SidebarTab extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: active ? kNavy : Colors.transparent,
-              width: 1,
             ),
           ),
           child: Row(
@@ -452,7 +454,8 @@ class _SidebarTab extends StatelessWidget {
                 style: TextStyle(
                   fontFamily: 'IBMPlexSansArabic',
                   fontSize: 14,
-                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                  fontWeight:
+                      active ? FontWeight.w700 : FontWeight.w500,
                   color: active ? kNavy : kSlate,
                 ),
               ),
@@ -462,9 +465,12 @@ class _SidebarTab extends StatelessWidget {
       );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// _LoyaltyBadge
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _LoyaltyBadge extends StatelessWidget {
   const _LoyaltyBadge({required this.tier});
-
   final LoyaltyTier tier;
 
   Color get _color => switch (tier) {
@@ -510,9 +516,9 @@ class _ProfileContent extends StatelessWidget {
     required this.firstNameCtrl,
     required this.lastNameCtrl,
     required this.phoneCtrl,
-    required this.formKey,
     required this.newPwCtrl,
     required this.confirmPwCtrl,
+    required this.formKey,
     required this.pwFormKey,
     required this.onSaveProfile,
     required this.onChangePassword,
@@ -527,54 +533,57 @@ class _ProfileContent extends StatelessWidget {
   final TextEditingController firstNameCtrl;
   final TextEditingController lastNameCtrl;
   final TextEditingController phoneCtrl;
-  final GlobalKey<FormState> formKey;
   final TextEditingController newPwCtrl;
   final TextEditingController confirmPwCtrl;
+  final GlobalKey<FormState> formKey;
   final GlobalKey<FormState> pwFormKey;
   final VoidCallback onSaveProfile;
   final VoidCallback onChangePassword;
 
   @override
   Widget build(BuildContext context) => switch (activeTab) {
-        1 => _PasswordTab(
+        0 => _PersonalInfoTab(
+            formKey: formKey,
+            firstNameCtrl: firstNameCtrl,
+            lastNameCtrl: lastNameCtrl,
+            phoneCtrl: phoneCtrl,
+            isSaving: isSaving,
+            onSave: onSaveProfile,
+          ),
+        1 => _SecurityTab(
+            pwFormKey: pwFormKey,
             newPwCtrl: newPwCtrl,
             confirmPwCtrl: confirmPwCtrl,
-            pwFormKey: pwFormKey,
             isChangingPw: isChangingPw,
             onChangePassword: onChangePassword,
           ),
         2 => _LoyaltyTab(
-            user: user,
             transactions: loyaltyTransactions,
             isLoading: loyaltyLoading,
           ),
-        _ => _PersonalInfoTab(
-            firstNameCtrl: firstNameCtrl,
-            lastNameCtrl: lastNameCtrl,
-            phoneCtrl: phoneCtrl,
-            formKey: formKey,
-            isSaving: isSaving,
-            onSave: onSaveProfile,
-          ),
+        3 => const _AddressesTab(),
+        _ => const SizedBox.shrink(),
       };
 }
 
-// ── Personal Info ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Tab bodies
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _PersonalInfoTab extends StatelessWidget {
   const _PersonalInfoTab({
+    required this.formKey,
     required this.firstNameCtrl,
     required this.lastNameCtrl,
     required this.phoneCtrl,
-    required this.formKey,
     required this.isSaving,
     required this.onSave,
   });
 
+  final GlobalKey<FormState> formKey;
   final TextEditingController firstNameCtrl;
   final TextEditingController lastNameCtrl;
   final TextEditingController phoneCtrl;
-  final GlobalKey<FormState> formKey;
   final bool isSaving;
   final VoidCallback onSave;
 
@@ -583,7 +592,7 @@ class _PersonalInfoTab extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: kBorder),
         ),
         child: Form(
@@ -592,35 +601,39 @@ class _PersonalInfoTab extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SectionHeader(
-                eyebrow: 'Account',
+                eyebrow: 'Profile',
                 title: 'Personal Info',
               ),
               const SizedBox(height: 24),
-              Row(
+              FB5Row(
                 children: [
-                  Expanded(
-                    child: _ProfileField(
+                  FB5Col(
+                    classNames: 'col-md-6 col-12',
+                    child: TextFormField(
                       controller: firstNameCtrl,
-                      label: 'First Name',
+                      decoration:
+                          const InputDecoration(labelText: 'First Name'),
                       validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'Required' : null,
+                          (v == null || v.isEmpty) ? 'Required' : null,
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _ProfileField(
+                  FB5Col(
+                    classNames: 'col-md-6 col-12',
+                    child: TextFormField(
                       controller: lastNameCtrl,
-                      label: 'Last Name',
+                      decoration:
+                          const InputDecoration(labelText: 'Last Name'),
                       validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'Required' : null,
+                          (v == null || v.isEmpty) ? 'Required' : null,
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
-              _ProfileField(
+              TextFormField(
                 controller: phoneCtrl,
-                label: 'Phone (optional)',
+                decoration:
+                    const InputDecoration(labelText: 'Phone (optional)'),
                 keyboardType: TextInputType.phone,
               ),
               const SizedBox(height: 28),
@@ -628,7 +641,6 @@ class _PersonalInfoTab extends StatelessWidget {
                 label: 'Save Changes',
                 onPressed: onSave,
                 loading: isSaving,
-                icon: Icons.check_rounded,
               ),
             ],
           ),
@@ -636,20 +648,18 @@ class _PersonalInfoTab extends StatelessWidget {
       );
 }
 
-// ── Password ──────────────────────────────────────────────────────────────────
-
-class _PasswordTab extends StatelessWidget {
-  const _PasswordTab({
+class _SecurityTab extends StatelessWidget {
+  const _SecurityTab({
+    required this.pwFormKey,
     required this.newPwCtrl,
     required this.confirmPwCtrl,
-    required this.pwFormKey,
     required this.isChangingPw,
     required this.onChangePassword,
   });
 
+  final GlobalKey<FormState> pwFormKey;
   final TextEditingController newPwCtrl;
   final TextEditingController confirmPwCtrl;
-  final GlobalKey<FormState> pwFormKey;
   final bool isChangingPw;
   final VoidCallback onChangePassword;
 
@@ -658,7 +668,7 @@ class _PasswordTab extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: kBorder),
         ),
         child: Form(
@@ -671,26 +681,28 @@ class _PasswordTab extends StatelessWidget {
                 title: 'Change Password',
               ),
               const SizedBox(height: 24),
-              _ProfileField(
+              TextFormField(
                 controller: newPwCtrl,
-                label: 'New Password',
                 obscureText: true,
+                decoration:
+                    const InputDecoration(labelText: 'New Password'),
                 validator: (v) =>
-                    (v == null || v.length < 6) ? 'Minimum 6 characters' : null,
+                    (v == null || v.length < 8) ? 'Min 8 characters' : null,
               ),
               const SizedBox(height: 16),
-              _ProfileField(
+              TextFormField(
                 controller: confirmPwCtrl,
-                label: 'Confirm Password',
                 obscureText: true,
-                validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                decoration:
+                    const InputDecoration(labelText: 'Confirm Password'),
+                validator: (v) =>
+                    (v == null || v.isEmpty) ? 'Required' : null,
               ),
               const SizedBox(height: 28),
               PrimaryButton(
                 label: 'Update Password',
                 onPressed: onChangePassword,
                 loading: isChangingPw,
-                icon: Icons.lock_outline_rounded,
               ),
             ],
           ),
@@ -698,16 +710,12 @@ class _PasswordTab extends StatelessWidget {
       );
 }
 
-// ── Loyalty ───────────────────────────────────────────────────────────────────
-
 class _LoyaltyTab extends StatelessWidget {
   const _LoyaltyTab({
-    required this.user,
     required this.transactions,
     required this.isLoading,
   });
 
-  final UserModel user;
   final List<LoyaltyTransactionModel> transactions;
   final bool isLoading;
 
@@ -716,7 +724,7 @@ class _LoyaltyTab extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: kBorder),
         ),
         child: Column(
@@ -727,63 +735,16 @@ class _LoyaltyTab extends StatelessWidget {
               title: 'Loyalty Points',
             ),
             const SizedBox(height: 24),
-
-            // ── Points summary ─────────────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.loyaltyBackground,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppColors.marcatGold.withAlpha(77),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.stars_rounded,
-                    color: AppColors.marcatGold,
-                    size: 32,
-                  ),
-                  const SizedBox(width: 16),
-                  Obx(() {
-                    final customer = Get.find<AccountController>().customer.value;
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${customer?.loyaltyPoints ?? 0} pts',
-                          style: AppTextStyles.titleLarge.copyWith(
-                            color: AppColors.marcatGold,
-                          ),
-                        ),
-                        Text(
-                          customer?.loyaltyTier.displayLabel ?? '',
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: kSlate,
-                          ),
-                        ),
-                      ],
-                    );
-                  }),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // ── Transaction history ────────────────────────────────────────
             if (isLoading)
               const Center(
                 child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppColors.marcatGold,
-                ),
+                    color: kGold, strokeWidth: 2),
               )
             else if (transactions.isEmpty)
               const EmptyState(
-                icon: Icons.history_rounded,
+                icon: Icons.stars_rounded,
                 title: 'No Transactions Yet',
-                subtitle: 'Complete orders to earn loyalty points.',
+                subtitle: 'Place orders to earn loyalty points.',
               )
             else
               ListView.separated(
@@ -792,105 +753,63 @@ class _LoyaltyTab extends StatelessWidget {
                 itemCount: transactions.length,
                 separatorBuilder: (_, __) =>
                     const Divider(color: kBorder, height: 1),
-                itemBuilder: (_, i) => _LoyaltyTile(tx: transactions[i]),
+                itemBuilder: (_, i) {
+                  final t = transactions[i];
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      t.description ?? 'Transaction',
+                      style: AppTextStyles.bodyMedium,
+                    ),
+                    subtitle: Text(
+                      // ✅ FIX: shortDate() — 0-arg, no locale
+                      t.createdAt.shortDate(),
+                      style: AppTextStyles.bodySmall
+                          .copyWith(color: kSlate),
+                    ),
+                    trailing: Text(
+                      '${t.points > 0 ? '+' : ''}${t.points} pts',
+                      style: TextStyle(
+                        fontFamily: 'IBMPlexMono',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color:
+                            t.points > 0 ? AppColors.statusGreen : kRed,
+                      ),
+                    ),
+                  );
+                },
               ),
           ],
         ),
       );
 }
 
-class _LoyaltyTile extends StatelessWidget {
-  const _LoyaltyTile({required this.tx});
-
-  final LoyaltyTransactionModel tx;
+class _AddressesTab extends StatelessWidget {
+  const _AddressesTab();
 
   @override
-  Widget build(BuildContext context) => ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: tx.points > 0
-                ? AppColors.successGreenLight
-                : AppColors.statusRedLight,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            tx.points > 0 ? Icons.add_rounded : Icons.remove_rounded,
-            size: 18,
-            color: tx.points > 0 ? AppColors.statusGreen : AppColors.statusRed,
-          ),
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: kBorder),
         ),
-        title: Text(tx.description ?? '', style: AppTextStyles.bodyMedium),
-        trailing: Text(
-          '${tx.points > 0 ? '+' : ''}${tx.points} pts',
-          style: AppTextStyles.titleSmall.copyWith(
-            color: tx.points > 0 ? AppColors.statusGreen : AppColors.statusRed,
-          ),
-        ),
-      );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// _ProfileField — shared form input
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ProfileField extends StatelessWidget {
-  const _ProfileField({
-    required this.controller,
-    required this.label,
-    this.obscureText = false,
-    this.keyboardType,
-    this.validator,
-  });
-
-  final TextEditingController controller;
-  final String label;
-  final bool obscureText;
-  final TextInputType? keyboardType;
-  final String? Function(String?)? validator;
-
-  @override
-  Widget build(BuildContext context) => TextFormField(
-        controller: controller,
-        obscureText: obscureText,
-        keyboardType: keyboardType,
-        validator: validator,
-        style: const TextStyle(
-          fontFamily: 'IBMPlexSansArabic',
-          fontSize: 14,
-          color: kNavy,
-        ),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(
-            fontFamily: 'IBMPlexSansArabic',
-            fontSize: 13,
-            color: kSlate,
-          ),
-          filled: true,
-          fillColor: kCream,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: kBorder),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: kBorder),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: kNavy, width: 1.5),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppColors.errorRed),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 14,
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SectionHeader(
+              eyebrow: 'Delivery',
+              title: 'Saved Addresses',
+            ),
+            const SizedBox(height: 24),
+            const EmptyState(
+              icon: Icons.location_on_outlined,
+              title: 'No Addresses Yet',
+              subtitle: 'Saved addresses will appear here.',
+            ),
+          ],
         ),
       );
 }

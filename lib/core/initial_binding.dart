@@ -16,9 +16,8 @@ import '../controllers/search_controller.dart';
 
 /// Registers all global GetX controllers at app start.
 ///
-/// Permanent controllers (permanent: true) live for the entire app lifetime.
-/// Lazy controllers (fenix: true) are recreated automatically after disposal.
-
+/// - `permanent: true` — lives for the full app lifetime.
+/// - `fenix: true`     — auto-recreated after disposal (lazy).
 class InitialBinding extends Bindings {
   @override
   void dependencies() {

@@ -8,7 +8,6 @@ import 'package:marcat/controllers/account_controller.dart';
 import 'package:marcat/controllers/admin_controller.dart';
 import 'package:marcat/controllers/auth_controller.dart';
 import 'package:marcat/controllers/cart_controller.dart';
-import 'package:marcat/core/constants/app_colors.dart';
 import 'package:marcat/core/constants/app_text_styles.dart';
 import 'package:marcat/core/extensions/currency_extensions.dart';
 import 'package:marcat/core/router/app_router.dart';
@@ -17,7 +16,7 @@ import 'package:marcat/models/customer_address_model.dart';
 import 'package:marcat/models/enums.dart';
 
 import 'scaffold/app_scaffold.dart';
-import 'shared/brand.dart'; // ✅ single source of colour constants
+import 'shared/brand.dart';
 import 'shared/buttons.dart';
 import 'shared/section_header.dart';
 
@@ -36,22 +35,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
   // ── State ─────────────────────────────────────────────────────────────────
   final _addresses = <CustomerAddressModel>[];
   int? _selectedAddressId;
-  int _step = 0; // 0 = address, 1 = review, 2 = success
-  bool _isLoadingAddresses = false;
+  DeliveryMethod? _selectedDelivery;
   bool _isPlacingOrder = false;
-  bool _showAddressForm = false;
-  String _label = 'Home';
+  bool _loadingAddresses = true;
 
-  // ── Address form controllers ───────────────────────────────────────────────
-  final _line1Ctrl = TextEditingController();
-  final _line2Ctrl = TextEditingController();
-  final _cityCtrl = TextEditingController();
-  final _postalCtrl = TextEditingController();
-  final _addressFormKey = GlobalKey<FormState>();
-
+  // ── Controllers ───────────────────────────────────────────────────────────
   CartController get _cart => Get.find<CartController>();
   AccountController get _account => Get.find<AccountController>();
   AuthController get _auth => Get.find<AuthController>();
+  AdminController get _admin => Get.find<AdminController>();
 
   @override
   void initState() {
@@ -59,351 +51,332 @@ class _CheckoutPageState extends State<CheckoutPage> {
     _loadAddresses();
   }
 
-  @override
-  void dispose() {
-    _line1Ctrl.dispose();
-    _line2Ctrl.dispose();
-    _cityCtrl.dispose();
-    _postalCtrl.dispose();
-    super.dispose();
-  }
-
   Future<void> _loadAddresses() async {
-    final user = _auth.state.value.user;
-    if (user == null) return;
-    if (mounted) setState(() => _isLoadingAddresses = true);
+    final uid = _auth.state.value.user?.id;
+    if (uid == null) return;
     try {
-      await _account.fetchAddresses(user.id);
+      await _account.loadAddresses(uid);
       if (mounted) {
         setState(() {
-          _addresses
-            ..clear()
-            ..addAll(_account.addresses);
-          if (_addresses.isNotEmpty) {
-            _selectedAddressId = _addresses.first.id;
-          }
+          _addresses.addAll(_account.addresses);
+          final def = _addresses.firstWhere(
+            (a) => a.isDefault,
+            orElse: () => _addresses.isEmpty
+                ? throw StateError('empty')
+                : _addresses.first,
+          );
+          _selectedAddressId = def.id;
+          _loadingAddresses = false;
         });
       }
     } catch (_) {
-      // Non-critical — user can still add a new address
-    } finally {
-      if (mounted) setState(() => _isLoadingAddresses = false);
-    }
-  }
-
-  Future<void> _addAddress() async {
-    if (!(_addressFormKey.currentState?.validate() ?? false)) return;
-    final user = _auth.state.value.user;
-    if (user == null) return;
-    try {
-      final newAddr = await _account.addAddress(user.id, {
-        'label': _label,
-        'full_address': _line1Ctrl.text.trim(),
-        'city': _cityCtrl.text.trim(),
-        'country': 'Jordan',
-        'is_default': false,
-        'latitude': 0,
-        'longitude': 0,
-      });
-      if (mounted) {
-        setState(() {
-          _addresses.add(newAddr);
-          _selectedAddressId = newAddr.id;
-          _showAddressForm = false;
-        });
-        _line1Ctrl.clear();
-        _line2Ctrl.clear();
-        _cityCtrl.clear();
-        _postalCtrl.clear();
-      }
-    } catch (e) {
-      Get.snackbar('Error', e.toString(),
-          backgroundColor: AppColors.errorRed, colorText: Colors.white);
+      if (mounted) setState(() => _loadingAddresses = false);
     }
   }
 
   Future<void> _placeOrder() async {
-    final user = _auth.state.value.user;
-    if (user == null) {
-      Get.toNamed(AppRoutes.login);
-      return;
-    }
     if (_selectedAddressId == null) {
-      Get.snackbar(
-        'Address Required',
-        'Please select or add a delivery address.',
-        backgroundColor: AppColors.statusAmber,
-        colorText: Colors.white,
-      );
+      Get.snackbar('Missing Address', 'Please select a delivery address.');
       return;
     }
-    if (mounted) setState(() => _isPlacingOrder = true);
+    if (_cart.items.isEmpty) return;
+
+    setState(() => _isPlacingOrder = true);
     try {
-      final adminCtrl = Get.find<AdminController>();
-      if (adminCtrl.stores.isEmpty) await adminCtrl.fetchStores();
-      final storeId =
-          adminCtrl.stores.isNotEmpty ? adminCtrl.stores.first.id : 1;
-
-      final saleId = await _cart.createOrder(
-        storeId: storeId,
-        shippingAddressId: _selectedAddressId!,
-        cartItems: _cart.items,
-        channel: SaleChannel.online.dbValue,
-        customerId: user.id,
-        discountTotalAmt: _cart.discountTotal,
-        shippingCostAmt: 0.0,
-        subtotalAmt: _cart.subtotal,
-        taxTotalAmt: 0.0,
-        offerId: _cart.appliedOffer.value?.offerId,
+      final uid = _auth.state.value.user!.id;
+      await _cart.placeOrder(
+        customerId: uid,
+        addressId: _selectedAddressId!,
+        deliveryMethod: _selectedDelivery,
       );
-
-      if (mounted) setState(() => _step = 2);
+      Get.offAllNamed(AppRoutes.orders);
       Get.snackbar(
         'Order Placed!',
-        'Your order #$saleId has been placed successfully.',
-        backgroundColor: AppColors.successGreen,
+        'Your order has been confirmed.',
+        backgroundColor: kNavy,
         colorText: Colors.white,
-        duration: const Duration(seconds: 4),
       );
     } catch (e) {
-      Get.snackbar('Error', e.toString(),
-          backgroundColor: AppColors.errorRed, colorText: Colors.white);
+      Get.snackbar('Error', e.toString());
     } finally {
       if (mounted) setState(() => _isPlacingOrder = false);
     }
   }
 
   @override
-  Widget build(BuildContext context) => CustomerScaffold(
-        page: 'Checkout',
-        body: FB5Container(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 40),
-            child: _step == 2
-                ? _SuccessStep(
-                    onContinue: () => Get.toNamed(AppRoutes.orders),
-                  )
-                : _step == 1
-                    ? _ReviewStep(
-                        addresses: _addresses,
-                        selectedAddressId: _selectedAddressId,
-                        isPlacingOrder: _isPlacingOrder,
-                        onPlaceOrder: _placeOrder,
-                        onStepChanged: (s) => setState(() => _step = s),
-                      )
-                    : _AddressStep(
-                        addresses: _addresses,
-                        selectedAddressId: _selectedAddressId,
-                        isLoading: _isLoadingAddresses,
-                        showAddressForm: _showAddressForm,
-                        label: _label,
-                        line1Ctrl: _line1Ctrl,
-                        line2Ctrl: _line2Ctrl,
-                        cityCtrl: _cityCtrl,
-                        postalCtrl: _postalCtrl,
-                        formKey: _addressFormKey,
-                        onSelectAddress: (id) =>
-                            setState(() => _selectedAddressId = id),
-                        onToggleForm: () => setState(
-                            () => _showAddressForm = !_showAddressForm),
-                        onLabelChanged: (l) => setState(() => _label = l),
-                        onAddAddress: _addAddress,
-                        onContinue: () {
-                          if (_selectedAddressId == null) {
-                            Get.snackbar(
-                              'Address Required',
-                              'Please select or add a delivery address.',
-                              backgroundColor: AppColors.statusAmber,
-                              colorText: Colors.white,
-                            );
-                            return;
-                          }
-                          setState(() => _step = 1);
-                        },
-                      ),
+  Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.sizeOf(context).width > 900;
+
+    return CustomerScaffold(
+      page: 'Checkout',
+      pageImage:
+          'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1600&q=80',
+      body: FB5Container(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 40),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SectionHeader(
+                eyebrow: 'Checkout',
+                title: 'Complete Your Order',
+              ),
+              const SizedBox(height: 32),
+              isDesktop
+                  ? FB5Row(
+                      children: [
+                        FB5Col(
+                          classNames: 'col-lg-7 col-12',
+                          child: _CheckoutForm(
+                            addresses: _addresses,
+                            selectedAddressId: _selectedAddressId,
+                            selectedDelivery: _selectedDelivery,
+                            loadingAddresses: _loadingAddresses,
+                            onAddressSelected: (id) => setState(
+                              () => _selectedAddressId = id,
+                            ),
+                            onDeliverySelected: (d) => setState(
+                              () => _selectedDelivery = d,
+                            ),
+                          ),
+                        ),
+                        FB5Col(
+                          classNames: 'col-lg-5 col-12',
+                          child: _CheckoutSummary(
+                            cart: _cart,
+                            onPlaceOrder: _placeOrder,
+                            isPlacing: _isPlacingOrder,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      children: [
+                        _CheckoutForm(
+                          addresses: _addresses,
+                          selectedAddressId: _selectedAddressId,
+                          selectedDelivery: _selectedDelivery,
+                          loadingAddresses: _loadingAddresses,
+                          onAddressSelected: (id) =>
+                              setState(() => _selectedAddressId = id),
+                          onDeliverySelected: (d) =>
+                              setState(() => _selectedDelivery = d),
+                        ),
+                        const SizedBox(height: 32),
+                        _CheckoutSummary(
+                          cart: _cart,
+                          onPlaceOrder: _placeOrder,
+                          isPlacing: _isPlacingOrder,
+                        ),
+                      ],
+                    ),
+            ],
           ),
         ),
-      );
+      ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _AddressStep — step 0
+// _CheckoutForm
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _AddressStep extends StatelessWidget {
-  const _AddressStep({
+class _CheckoutForm extends StatelessWidget {
+  const _CheckoutForm({
     required this.addresses,
     required this.selectedAddressId,
-    required this.isLoading,
-    required this.showAddressForm,
-    required this.label,
-    required this.line1Ctrl,
-    required this.line2Ctrl,
-    required this.cityCtrl,
-    required this.postalCtrl,
-    required this.formKey,
-    required this.onSelectAddress,
-    required this.onToggleForm,
-    required this.onLabelChanged,
-    required this.onAddAddress,
-    required this.onContinue,
+    required this.selectedDelivery,
+    required this.loadingAddresses,
+    required this.onAddressSelected,
+    required this.onDeliverySelected,
   });
 
   final List<CustomerAddressModel> addresses;
   final int? selectedAddressId;
-  final bool isLoading;
-  final bool showAddressForm;
-  final String label;
-  final TextEditingController line1Ctrl;
-  final TextEditingController line2Ctrl;
-  final TextEditingController cityCtrl;
-  final TextEditingController postalCtrl;
-  final GlobalKey<FormState> formKey;
-  final ValueChanged<int> onSelectAddress;
-  final VoidCallback onToggleForm;
-  final ValueChanged<String> onLabelChanged;
-  final VoidCallback onAddAddress;
-  final VoidCallback onContinue;
-
-  static const _labels = ['Home', 'Work', 'Other'];
+  final DeliveryMethod? selectedDelivery;
+  final bool loadingAddresses;
+  final ValueChanged<int> onAddressSelected;
+  final ValueChanged<DeliveryMethod?> onDeliverySelected;
 
   @override
   Widget build(BuildContext context) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionHeader(
-            eyebrow: 'Step 1',
+          // ── Delivery Address ──────────────────────────────────────────
+          _SectionCard(
             title: 'Delivery Address',
-            subtitle: 'Choose where you want your order delivered.',
-          ),
-          const SizedBox(height: 28),
-
-          // ── Saved addresses ──────────────────────────────────────────────
-          if (isLoading)
-            const Center(
-              child: CircularProgressIndicator(strokeWidth: 2, color: kGold),
-            )
-          else ...[
-            if (addresses.isNotEmpty)
-              ...addresses.map((addr) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _AddressTile(
-                      address: addr,
-                      selected: addr.id == selectedAddressId,
-                      onTap: () => onSelectAddress(addr.id),
-                    ),
-                  )),
-
-            // ── Add address toggle ─────────────────────────────────────
-            TextButton.icon(
-              onPressed: onToggleForm,
-              icon: Icon(
-                showAddressForm
-                    ? Icons.remove_circle_outline_rounded
-                    : Icons.add_circle_outline_rounded,
-                size: 18,
-              ),
-              label: Text(
-                showAddressForm ? 'Hide Form' : 'Add New Address',
-                style: const TextStyle(
-                  fontFamily: 'IBMPlexSansArabic',
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              style: TextButton.styleFrom(foregroundColor: kNavy),
-            ),
-
-            // ── Address form ───────────────────────────────────────────
-            if (showAddressForm)
-              Form(
-                key: formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Label',
-                      style: TextStyle(
-                        fontFamily: 'IBMPlexSansArabic',
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: kSlate,
+            child: loadingAddresses
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: CircularProgressIndicator(
+                        color: kGold,
+                        strokeWidth: 2,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      children: _labels.map((l) {
-                        final isSelected = l == label;
-                        return ChoiceChip(
-                          label: Text(
-                            l,
-                            style: TextStyle(
-                              fontFamily: 'IBMPlexSansArabic',
-                              fontWeight: FontWeight.w600,
-                              color: isSelected ? Colors.white : kNavy,
-                            ),
-                          ),
-                          selected: isSelected,
-                          onSelected: (_) => onLabelChanged(l),
-                          selectedColor: kNavy,
-                          backgroundColor: Colors.white,
-                          side: const BorderSide(color: kBorder),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 16),
-                    _CheckoutField(
-                      controller: line1Ctrl,
-                      label: 'Address Line 1',
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'Required' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    _CheckoutField(
-                      controller: line2Ctrl,
-                      label: 'Address Line 2 (optional)',
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _CheckoutField(
-                            controller: cityCtrl,
-                            label: 'City',
-                            validator: (v) => (v == null || v.trim().isEmpty)
-                                ? 'Required'
-                                : null,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _CheckoutField(
-                            controller: postalCtrl,
-                            label: 'Postal Code',
-                            keyboardType: TextInputType.number,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    PrimaryButton(
-                      label: 'Save Address',
-                      onPressed: onAddAddress,
-                      height: 46,
-                    ),
-                  ],
-                ),
-              ),
-          ],
+                  )
+                : addresses.isEmpty
+                    ? const _AddAddressPrompt()
+                    : Column(
+                        children: addresses
+                            .map(
+                              (a) => _AddressTile(
+                                address: a,
+                                selected: a.id == selectedAddressId,
+                                onTap: () => onAddressSelected(a.id),
+                              ),
+                            )
+                            .toList(),
+                      ),
+          ),
+          const SizedBox(height: 20),
 
-          const SizedBox(height: 32),
-          PrimaryButton(
-            label: 'Continue to Review',
-            onPressed: onContinue,
-            icon: Icons.arrow_forward_rounded,
+          // ── Delivery Method ───────────────────────────────────────────
+          _SectionCard(
+            title: 'Delivery Method',
+            child: Column(
+              children: DeliveryMethod.values.map((method) {
+                final selected = selectedDelivery == method;
+                return _DeliveryMethodTile(
+                  method: method,
+                  selected: selected,
+                  onTap: () => onDeliverySelected(method),
+                );
+              }).toList(),
+            ),
           ),
         ],
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _CheckoutSummary
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CheckoutSummary extends StatelessWidget {
+  const _CheckoutSummary({
+    required this.cart,
+    required this.onPlaceOrder,
+    required this.isPlacing,
+  });
+
+  final CartController cart;
+  final VoidCallback onPlaceOrder;
+  final bool isPlacing;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: kBorder),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Order Summary', style: AppTextStyles.titleMedium),
+            const SizedBox(height: 16),
+            const Divider(color: kBorder, height: 1),
+            const SizedBox(height: 12),
+
+            // Items preview
+            Obx(() => Column(
+                  children: cart.items
+                      .map((item) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 6),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '${item.productName}  ×${item.quantity}',
+                                    style: AppTextStyles.bodySmall,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Text(
+                                  (item.unitPrice * item.quantity).toJOD(),
+                                  style: AppTextStyles.bodyMedium,
+                                ),
+                              ],
+                            ),
+                          ))
+                      .toList(),
+                )),
+
+            const SizedBox(height: 12),
+            const Divider(color: kBorder, height: 1),
+            const SizedBox(height: 12),
+
+            // Totals
+            _Row('Subtotal', cart.subtotal.toJOD()),
+            const SizedBox(height: 6),
+            _Row('Delivery', cart.deliveryFee.toJODOrFree()),
+            const SizedBox(height: 12),
+            const Divider(color: kBorder, height: 1),
+            const SizedBox(height: 12),
+            _Row('Total', cart.grandTotal.toJOD(), bold: true),
+            const SizedBox(height: 24),
+
+            PrimaryButton(
+              label: 'Place Order',
+              onPressed: onPlaceOrder,
+              loading: isPlacing,
+            ),
+          ],
+        ),
+      );
+}
+
+class _Row extends StatelessWidget {
+  const _Row(this.label, this.value, {this.bold = false});
+
+  final String label;
+  final String value;
+  final bool bold;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: AppTextStyles.bodySmall.copyWith(color: kSlate)),
+          Text(
+            value,
+            style: bold ? AppTextStyles.priceMedium : AppTextStyles.bodyMedium,
+          ),
+        ],
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _SectionCard
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: kBorder),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: AppTextStyles.titleMedium),
+            const SizedBox(height: 16),
+            child,
+          ],
+        ),
       );
 }
 
@@ -427,10 +400,11 @@ class _AddressTile extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: selected ? kNavy.withAlpha(13) : Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            color: selected ? kNavy.withAlpha(10) : Colors.white,
+            borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: selected ? kNavy : kBorder,
               width: selected ? 1.5 : 1,
@@ -440,8 +414,8 @@ class _AddressTile extends StatelessWidget {
             children: [
               Icon(
                 selected
-                    ? Icons.radio_button_checked_rounded
-                    : Icons.radio_button_unchecked_rounded,
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_unchecked,
                 size: 20,
                 color: selected ? kNavy : kSlate,
               ),
@@ -451,17 +425,16 @@ class _AddressTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      address.label,
+                      address.label ?? 'Address',
                       style: AppTextStyles.titleSmall,
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     Text(
-                      '${address.fullAddress}, ${address.city}',
-                      style: const TextStyle(
-                        fontFamily: 'IBMPlexSansArabic',
-                        fontSize: 12,
-                        color: kSlate,
-                      ),
+                      [
+                        address.addressLine1,
+                        address.city,
+                      ].where((s) => s != null && s.isNotEmpty).join(', '),
+                      style: AppTextStyles.bodySmall.copyWith(color: kSlate),
                     ),
                   ],
                 ),
@@ -473,255 +446,84 @@ class _AddressTile extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _ReviewStep — step 1
+// _DeliveryMethodTile
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _ReviewStep extends StatelessWidget {
-  const _ReviewStep({
-    required this.addresses,
-    required this.selectedAddressId,
-    required this.isPlacingOrder,
-    required this.onPlaceOrder,
-    required this.onStepChanged,
+class _DeliveryMethodTile extends StatelessWidget {
+  const _DeliveryMethodTile({
+    required this.method,
+    required this.selected,
+    required this.onTap,
   });
 
-  final List<CustomerAddressModel> addresses;
-  final int? selectedAddressId;
-  final bool isPlacingOrder;
-  final VoidCallback onPlaceOrder;
-  final ValueChanged<int> onStepChanged;
+  final DeliveryMethod method;
+  final bool selected;
+  final VoidCallback onTap;
+
+  String get _label => switch (method) {
+        DeliveryMethod.standard => 'Standard Delivery (3–5 days)',
+        DeliveryMethod.express => 'Express Delivery (1–2 days)',
+        DeliveryMethod.pickup => 'Store Pickup',
+      };
+
+  String get _price => switch (method) {
+        DeliveryMethod.standard => 'JD 2.000',
+        DeliveryMethod.express => 'JD 5.000',
+        DeliveryMethod.pickup => 'Free',
+      };
 
   @override
-  Widget build(BuildContext context) {
-    final cart = Get.find<CartController>();
-    final addr = addresses.where((a) => a.id == selectedAddressId).firstOrNull;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SectionHeader(
-          eyebrow: 'Step 2',
-          title: 'Review Your Order',
-          subtitle: 'Confirm everything looks right before placing.',
-        ),
-        const SizedBox(height: 24),
-
-        // ── Delivery address ─────────────────────────────────────────────
-        if (addr != null)
-          Container(
-            padding: const EdgeInsets.all(20),
-            margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: kBorder),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.location_on_outlined, size: 18, color: kGold),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(addr.label, style: AppTextStyles.titleSmall),
-                      Text(
-                        '${addr.fullAddress}, ${addr.city}',
-                        style: const TextStyle(
-                          fontFamily: 'IBMPlexSansArabic',
-                          fontSize: 12,
-                          color: kSlate,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => onStepChanged(0),
-                  child: const Text(
-                    'Change',
-                    style: TextStyle(
-                      fontFamily: 'IBMPlexSansArabic',
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: kNavy,
-                    ),
-                  ),
-                ),
-              ],
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: selected ? kNavy.withAlpha(10) : Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: selected ? kNavy : kBorder,
+              width: selected ? 1.5 : 1,
             ),
           ),
-
-        // ── Cart items ───────────────────────────────────────────────────
-        Obx(() => ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: cart.items.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (_, i) => _ReviewItem(item: cart.items[i]),
-            )),
-
-        const SizedBox(height: 24),
-
-        // ── Totals ───────────────────────────────────────────────────────
-        Obx(() {
-          final subtotal = cart.subtotal;
-          final discount = cart.discountTotal;
-          final total = cart.grandTotal;
-
-          return Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: kBorder),
-            ),
-            child: Column(
-              children: [
-                _TotalRow(label: 'Subtotal', value: subtotal.toJOD()),
-                if (discount > 0)
-                  _TotalRow(
-                    label: 'Discount',
-                    value: '-${discount.toJOD()}',
-                    color: kRed,
-                  ),
-                _TotalRow(
-                  label: 'Shipping',
-                  value: 'Free',
-                  color: AppColors.successGreen,
-                ),
-                const Divider(color: kBorder, height: 20),
-                _TotalRow(
-                  label: 'Total',
-                  value: total.toJOD(),
-                  bold: true,
-                ),
-              ],
-            ),
-          );
-        }),
-
-        const SizedBox(height: 32),
-
-        PrimaryButton(
-          label: 'Place Order',
-          onPressed: isPlacingOrder ? null : onPlaceOrder,
-          loading: isPlacingOrder,
-          icon: Icons.check_circle_outline_rounded,
-        ),
-        const SizedBox(height: 12),
-        OutlinedButton(
-          onPressed: () => onStepChanged(0),
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size(double.infinity, 48),
-            side: const BorderSide(color: kBorder),
-            foregroundColor: kNavy,
-          ),
-          child: const Text(
-            'Back to Address',
-            style: TextStyle(
-              fontFamily: 'IBMPlexSansArabic',
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ReviewItem extends StatelessWidget {
-  const _ReviewItem({required this.item});
-
-  final CartItemModel item;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: kBorder),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 56,
-              height: 68,
-              decoration: BoxDecoration(
-                color: kCream,
-                borderRadius: BorderRadius.circular(6),
+          child: Row(
+            children: [
+              Icon(
+                selected
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_unchecked,
+                size: 20,
+                color: selected ? kNavy : kSlate,
               ),
-              child: item.primaryImageUrl != null
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: Image.network(
-                        item.primaryImageUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            const ColoredBox(color: AppColors.marcatCream),
-                      ),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(item.productName,
-                      style: AppTextStyles.titleSmall,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Qty: ${item.quantity}',
-                    style: const TextStyle(
-                      fontFamily: 'IBMPlexSansArabic',
-                      fontSize: 12,
-                      color: kSlate,
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(_label, style: AppTextStyles.bodyMedium),
               ),
-            ),
-            Text(item.lineTotal.toJOD(), style: AppTextStyles.priceMedium),
-          ],
+              Text(
+                _price,
+                style: AppTextStyles.priceSmall,
+              ),
+            ],
+          ),
         ),
       );
 }
 
-class _TotalRow extends StatelessWidget {
-  const _TotalRow({
-    required this.label,
-    required this.value,
-    this.bold = false,
-    this.color,
-  });
-
-  final String label;
-  final String value;
-  final bool bold;
-  final Color? color;
+class _AddAddressPrompt extends StatelessWidget {
+  const _AddAddressPrompt();
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.symmetric(vertical: 16),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
+            const Icon(Icons.add_location_alt_outlined,
+                size: 20, color: kSlate),
+            const SizedBox(width: 12),
             Text(
-              label,
-              style: bold
-                  ? AppTextStyles.titleSmall
-                  : AppTextStyles.bodyMedium.copyWith(color: kSlate),
-            ),
-            Text(
-              value,
-              style:
-                  (bold ? AppTextStyles.priceMedium : AppTextStyles.bodyMedium)
-                      .copyWith(color: color),
+              'No saved addresses. Go to Profile to add one.',
+              style: AppTextStyles.bodySmall.copyWith(color: kSlate),
             ),
           ],
         ),
@@ -729,124 +531,7 @@ class _TotalRow extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _SuccessStep — step 2
+// DeliveryMethod enum (local to checkout — not a DB enum)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _SuccessStep extends StatelessWidget {
-  const _SuccessStep({required this.onContinue});
-
-  final VoidCallback onContinue;
-
-  @override
-  Widget build(BuildContext context) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 40),
-            Container(
-              width: 80,
-              height: 80,
-              decoration: const BoxDecoration(
-                color: AppColors.successGreenLight,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.check_rounded,
-                size: 40,
-                color: AppColors.successGreen,
-              ),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Order Placed!',
-              style: TextStyle(
-                fontFamily: 'PlayfairDisplay',
-                fontSize: 32,
-                fontWeight: FontWeight.w700,
-                color: kNavy,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              "Thank you for your order.\nWe'll notify you when it ships.",
-              style: TextStyle(
-                fontFamily: 'IBMPlexSansArabic',
-                fontSize: 15,
-                color: kSlate,
-                height: 1.6,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: 200,
-              child: PrimaryButton(
-                label: 'View My Orders',
-                onPressed: onContinue,
-                icon: Icons.receipt_long_outlined,
-              ),
-            ),
-            const SizedBox(height: 40),
-          ],
-        ),
-      );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// _CheckoutField — shared form input
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _CheckoutField extends StatelessWidget {
-  const _CheckoutField({
-    required this.controller,
-    required this.label,
-    this.validator,
-    this.keyboardType,
-  });
-
-  final TextEditingController controller;
-  final String label;
-  final String? Function(String?)? validator;
-  final TextInputType? keyboardType;
-
-  @override
-  Widget build(BuildContext context) => TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        validator: validator,
-        style: const TextStyle(
-          fontFamily: 'IBMPlexSansArabic',
-          fontSize: 14,
-          color: kNavy,
-        ),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(
-            fontFamily: 'IBMPlexSansArabic',
-            fontSize: 13,
-            color: kSlate,
-          ),
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: kBorder),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: kBorder),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: kNavy, width: 1.5),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppColors.errorRed),
-          ),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        ),
-      );
-}
+enum DeliveryMethod { standard, express, pickup }

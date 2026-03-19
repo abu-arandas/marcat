@@ -2,69 +2,58 @@
 
 import 'package:intl/intl.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// DateTimeExtensions
+// ─────────────────────────────────────────────────────────────────────────────
+
 extension DateTimeExtensions on DateTime {
-  /// Short date in given locale, e.g. "26 Feb 2026" / "26 فبراير 2026".
-  String shortDate(String locale) => DateFormat.yMMMMd(locale).format(this);
+  /// Short date — e.g. "February 26, 2026".
+  String shortDate() => DateFormat.yMMMMd('en').format(this);
 
-  /// Short date + time.
-  String shortDateTime(String locale) =>
-      DateFormat.yMMMMd(locale).add_jm().format(this);
+  /// Short date + time — e.g. "February 26, 2026  2:35 PM".
+  String shortDateTime() => DateFormat.yMMMMd('en').add_jm().format(this);
 
-  /// Time only.
-  String timeOnly(String locale) => DateFormat.jm(locale).format(this);
+  /// Time only — e.g. "2:35 PM".
+  String timeOnly() => DateFormat.jm('en').format(this);
 
-  /// Marcat receipt format: "26/02/2026 14:35"
+  /// Marcat receipt format: "26/02/2026 14:35".
   String receiptFormat() => DateFormat('dd/MM/yyyy HH:mm').format(this);
 
-  /// Relative time label ("2 hours ago" / "منذ ساعتين").
-  String relativeTime(String locale) {
-    final now = DateTime.now();
-    final diff = now.difference(this);
-    final isAr = locale.startsWith('ar');
-
-    if (diff.inSeconds < 60) return isAr ? 'الآن' : 'Just now';
-    if (diff.inMinutes < 60) {
-      final m = diff.inMinutes;
-      return isAr ? 'منذ $m دقيقة' : '$m min ago';
-    }
-    if (diff.inHours < 24) {
-      final h = diff.inHours;
-      return isAr ? 'منذ $h ساعة' : '${h}h ago';
-    }
-    if (diff.inDays < 7) {
-      final d = diff.inDays;
-      return isAr ? 'منذ $d أيام' : '${d}d ago';
-    }
-    if (diff.inDays < 30) {
-      final w = (diff.inDays / 7).floor();
-      return isAr ? 'منذ $w أسبوع' : '${w}w ago';
-    }
-    return shortDate(locale);
+  /// Relative time label — e.g. "Just now", "5 min ago", "3d ago".
+  String relativeTime() {
+    final diff = DateTime.now().difference(this);
+    if (diff.inSeconds < 60) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    if (diff.inDays < 30) return '${(diff.inDays / 7).floor()}w ago';
+    return shortDate();
   }
 
-  /// Is this date today?
+  /// Returns `true` when this date falls on today.
   bool get isToday {
     final now = DateTime.now();
     return year == now.year && month == now.month && day == now.day;
   }
 
-  /// Strip time component.
+  /// Strips the time component.
   DateTime get dateOnly => DateTime(year, month, day);
 
-  /// Day name for given locale, e.g. "Monday" / "الاثنين".
-  String dayName(String locale) => DateFormat.EEEE(locale).format(this);
+  /// Full day name — e.g. "Monday".
+  String dayName() => DateFormat.EEEE('en').format(this);
 
-  /// ISO 8601 string for API calls.
+  /// ISO 8601 UTC string for API calls.
   String get isoString => toUtc().toIso8601String();
 
-  /// Short date using the device's current locale.
+  /// Short date using the device's default locale.
   String toDeviceShortDate() => DateFormat.yMd().format(this);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// NullableDateExtensions
+// ─────────────────────────────────────────────────────────────────────────────
+
 extension NullableDateExtensions on DateTime? {
-  /// Returns "—" when null.
-  String shortDateOrDash(String locale) {
-    if (this == null) return '—';
-    return this!.shortDate(locale);
-  }
+  /// Returns `"—"` when null, otherwise delegates to [shortDate].
+  String shortDateOrDash() => this == null ? '—' : this!.shortDate();
 }

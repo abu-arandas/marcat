@@ -44,6 +44,7 @@ dependencies:
   photo_view: ^0.15.0
   image_picker: ^1.2.1
   flutter_dotenv: ^6.0.0
+  # intl is used for DateFormat (date_extensions.dart) — NOT for l10n ARB gen.
   intl: ^0.20.2
 
 dev_dependencies:

@@ -9,12 +9,13 @@ import 'package:marcat/controllers/cart_controller.dart';
 import 'package:marcat/core/constants/app_colors.dart';
 import 'package:marcat/core/constants/app_text_styles.dart';
 import 'package:marcat/core/extensions/currency_extensions.dart';
+import 'package:marcat/core/extensions/date_extensions.dart';
 import 'package:marcat/core/router/app_router.dart';
 import 'package:marcat/models/enums.dart';
 import 'package:marcat/models/sale_model.dart';
 
 import 'scaffold/app_scaffold.dart';
-import 'shared/brand.dart'; // ✅ single source of colour constants
+import 'shared/brand.dart';
 import 'shared/empty_state.dart';
 import 'shared/section_header.dart';
 
@@ -58,6 +59,7 @@ class _OrdersPageState extends State<OrdersPage> {
     }
     if (!_hasMore) return;
     if (mounted) setState(() => _isLoading = true);
+
     try {
       final (items, total) = await _repo.fetchOrders(
         page: _page,
@@ -73,13 +75,15 @@ class _OrdersPageState extends State<OrdersPage> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
-      Get.snackbar(
-        'Error',
-        e.toString(),
-        backgroundColor: AppColors.marcatNavy,
-        colorText: Colors.white,
-      );
+      if (mounted) {
+        setState(() => _isLoading = false);
+        Get.snackbar(
+          'Error',
+          e.toString(),
+          backgroundColor: kNavy,
+          colorText: Colors.white,
+        );
+      }
     }
   }
 
@@ -203,12 +207,12 @@ class _OrderList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isLoading && orders.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 60),
-        child: Center(
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 80),
           child: CircularProgressIndicator(
-            strokeWidth: 2,
             color: AppColors.marcatGold,
+            strokeWidth: 2,
           ),
         ),
       );
@@ -218,7 +222,7 @@ class _OrderList extends StatelessWidget {
       return const EmptyState(
         icon: Icons.receipt_long_outlined,
         title: 'No Orders Yet',
-        subtitle: 'When you place orders they will appear here.',
+        subtitle: "You haven't placed any orders yet.\nStart shopping!",
       );
     }
 
@@ -235,20 +239,18 @@ class _OrderList extends StatelessWidget {
           const SizedBox(height: 24),
           Center(
             child: isLoading
-                ? const CircularProgressIndicator(strokeWidth: 2)
+                ? const CircularProgressIndicator(
+                    color: AppColors.marcatGold, strokeWidth: 2)
                 : OutlinedButton(
                     onPressed: onLoadMore,
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: kBorder),
                       foregroundColor: kNavy,
-                    ),
-                    child: const Text(
-                      'Load More',
-                      style: TextStyle(
-                        fontFamily: 'IBMPlexSansArabic',
-                        fontWeight: FontWeight.w600,
+                      side: const BorderSide(color: kBorder),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
+                    child: const Text('Load More'),
                   ),
           ),
         ],
@@ -268,7 +270,9 @@ class _OrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: () => Get.toNamed(AppRoutes.orderDetailOf(order.id)),
+        onTap: () => Get.toNamed(
+          AppRoutes.orderDetailOf(order.id),
+        ),
         child: Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -284,30 +288,33 @@ class _OrderCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      '#${order.referenceNumber}',
+                      'Order #${order.id}',
                       style: AppTextStyles.titleSmall,
                     ),
                   ),
-                  _StatusBadge(status: order.status),
+                  _StatusBadge(
+                    status: SaleStatusX.fromDb(order.status),
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
 
-              // ── Meta ───────────────────────────────────────────────────
+              // ── Meta row ───────────────────────────────────────────────
               Row(
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.calendar_today_outlined,
                     size: 13,
                     color: kSlate,
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    _formatDate(order.createdAt),
+                    // ✅ FIX: replaced manual _formatDate() with shortDate()
+                    order.createdAt.shortDate(),
                     style: AppTextStyles.bodySmall.copyWith(color: kSlate),
                   ),
                   const SizedBox(width: 16),
-                  Icon(
+                  const Icon(
                     Icons.receipt_outlined,
                     size: 13,
                     color: kSlate,
@@ -321,13 +328,10 @@ class _OrderCard extends StatelessWidget {
               ),
               const SizedBox(height: 12),
 
-              // ── Items preview ──────────────────────────────────────────
-              const SizedBox(height: 12),
-
-              // ── View details CTA ───────────────────────────────────────
+              // ── View Details CTA ───────────────────────────────────────
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
-                children: [
+                children: const [
                   Text(
                     'View Details',
                     style: TextStyle(
@@ -337,8 +341,8 @@ class _OrderCard extends StatelessWidget {
                       color: kNavy,
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  const Icon(
+                  SizedBox(width: 4),
+                  Icon(
                     Icons.arrow_forward_rounded,
                     size: 14,
                     color: kNavy,
@@ -349,10 +353,6 @@ class _OrderCard extends StatelessWidget {
           ),
         ),
       );
-
-  String _formatDate(DateTime dt) => '${dt.day.toString().padLeft(2, '0')}/'
-      '${dt.month.toString().padLeft(2, '0')}/'
-      '${dt.year}';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -12,16 +12,19 @@ import 'core/constants/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'core/initial_binding.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Entry point
+// ─────────────────────────────────────────────────────────────────────────────
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load .env in debug mode only — production values are baked in via CI.
+  // Load .env in debug mode only — production values are injected via CI.
   if (kDebugMode) {
     try {
       await dotenv.load(fileName: '.env');
     } catch (_) {
-      debugPrint(
-          '[main] .env file not found — ensure it exists for local dev.');
+      debugPrint('[main] .env not found — ensure it exists for local dev.');
     }
   }
 
@@ -33,6 +36,10 @@ Future<void> main() async {
   runApp(const MarcatApp());
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// MarcatApp
+// ─────────────────────────────────────────────────────────────────────────────
+
 class MarcatApp extends StatelessWidget {
   const MarcatApp({super.key});
 
@@ -42,8 +49,10 @@ class MarcatApp extends StatelessWidget {
       builder: (context) => GetMaterialApp(
         title: 'Marcat',
         debugShowCheckedModeBanner: false,
+        // ── Theme ──────────────────────────────────────────────────────────
         theme: AppTheme.light,
         themeMode: ThemeMode.light,
+        // ── Routing ────────────────────────────────────────────────────────
         initialBinding: InitialBinding(),
         initialRoute: AppRoutes.home,
         getPages: AppPages.pages,

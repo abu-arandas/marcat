@@ -15,7 +15,6 @@
 - [Getting Started](#getting-started)
 - [Environment Setup](#environment-setup)
 - [Database](#database)
-- [Localization](#localization)
 - [Assets & Fonts](#assets--fonts)
 
 ---
@@ -79,7 +78,6 @@
 | Image Handling | [cached_network_image](https://pub.dev/packages/cached_network_image), [image_picker](https://pub.dev/packages/image_picker), [photo_view](https://pub.dev/packages/photo_view) |
 | Barcode / QR | [mobile_scanner](https://pub.dev/packages/mobile_scanner) |
 | Storage | [shared_preferences](https://pub.dev/packages/shared_preferences), [flutter_secure_storage](https://pub.dev/packages/flutter_secure_storage) |
-| Localization | `flutter_localizations` + ARB files |
 | Environment | [flutter_dotenv](https://pub.dev/packages/flutter_dotenv) |
 | Code Generation | [freezed](https://pub.dev/packages/freezed), [json_serializable](https://pub.dev/packages/json_serializable) |
 
@@ -107,7 +105,6 @@ UI (Views)  ──→  Controllers  ──→  Supabase (PostgreSQL / Auth / Sto
 | `AdminController` | Staff, commissions, stores, inventory |
 | `DeliveryController` | Deliveries and delivery status |
 | `SearchController` | Real-time product search (delegates to ProductController) |
-| `LocaleController` | App language (English / Arabic) |
 
 ---
 
@@ -247,19 +244,6 @@ To apply the schema to a new Supabase project:
 | `offers` | Promotional offers linked to products |
 | `wishlists` | Customer wishlist items |
 | `customer_addresses` | Saved delivery addresses |
-
----
-
-## Localization
-
-The app supports **English** and **Arabic** out of the box, with RTL layout handled automatically.
-
-ARB translation files live in `lib/l10n/`. To add or update translations:
-
-1. Edit `lib/l10n/app_en.arb` (English) and `lib/l10n/app_ar.arb` (Arabic)
-2. Run `flutter gen-l10n` or `flutter pub get` (generation is automatic via `l10n.yaml`)
-
-The `LocaleController` persists the user's language preference and rebuilds the app on change.
 
 ---
 
