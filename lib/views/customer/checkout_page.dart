@@ -5,13 +5,12 @@ import 'package:flutter_bootstrap5/flutter_bootstrap5.dart';
 import 'package:get/get.dart';
 
 import 'package:marcat/controllers/account_controller.dart';
-import 'package:marcat/controllers/admin_controller.dart';
+
 import 'package:marcat/controllers/auth_controller.dart';
 import 'package:marcat/controllers/cart_controller.dart';
 import 'package:marcat/core/constants/app_text_styles.dart';
 import 'package:marcat/core/extensions/currency_extensions.dart';
 import 'package:marcat/core/router/app_router.dart';
-import 'package:marcat/models/cart_item_model.dart';
 import 'package:marcat/models/customer_address_model.dart';
 import 'package:marcat/models/enums.dart';
 
@@ -43,7 +42,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
   CartController get _cart => Get.find<CartController>();
   AccountController get _account => Get.find<AccountController>();
   AuthController get _auth => Get.find<AuthController>();
-  AdminController get _admin => Get.find<AdminController>();
+  double get _deliveryFee => _selectedDelivery == DeliveryMethod.express
+      ? 5.0
+      : _selectedDelivery == DeliveryMethod.standard
+          ? 2.0
+          : 0.0;
 
   @override
   void initState() {
@@ -55,7 +58,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     final uid = _auth.state.value.user?.id;
     if (uid == null) return;
     try {
-      await _account.loadAddresses(uid);
+      await _account.fetchAddresses(uid);
       if (mounted) {
         setState(() {
           _addresses.addAll(_account.addresses);
@@ -84,10 +87,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
     setState(() => _isPlacingOrder = true);
     try {
       final uid = _auth.state.value.user!.id;
-      await _cart.placeOrder(
+      await _cart.createOrder(
+        channel: SaleChannel.online.dbValue,
+        storeId: 1, // Store 1 for online orders based on typical setup
         customerId: uid,
-        addressId: _selectedAddressId!,
-        deliveryMethod: _selectedDelivery,
+        shippingAddressId: _selectedAddressId!,
+        subtotalAmt: _cart.subtotal,
+        discountTotalAmt: _cart.discountTotal,
+        taxTotalAmt: 0.0,
+        shippingCostAmt: _deliveryFee,
+        offerId: _cart.appliedOffer.value?.offerId,
+        cartItems: _cart.items,
       );
       Get.offAllNamed(AppRoutes.orders);
       Get.snackbar(
@@ -144,6 +154,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           classNames: 'col-lg-5 col-12',
                           child: _CheckoutSummary(
                             cart: _cart,
+                            deliveryFee: _deliveryFee,
                             onPlaceOrder: _placeOrder,
                             isPlacing: _isPlacingOrder,
                           ),
@@ -165,6 +176,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         const SizedBox(height: 32),
                         _CheckoutSummary(
                           cart: _cart,
+                          deliveryFee: _deliveryFee,
                           onPlaceOrder: _placeOrder,
                           isPlacing: _isPlacingOrder,
                         ),
@@ -257,11 +269,13 @@ class _CheckoutForm extends StatelessWidget {
 class _CheckoutSummary extends StatelessWidget {
   const _CheckoutSummary({
     required this.cart,
+    required this.deliveryFee,
     required this.onPlaceOrder,
     required this.isPlacing,
   });
 
   final CartController cart;
+  final double deliveryFee;
   final VoidCallback onPlaceOrder;
   final bool isPlacing;
 
@@ -313,11 +327,11 @@ class _CheckoutSummary extends StatelessWidget {
             // Totals
             _Row('Subtotal', cart.subtotal.toJOD()),
             const SizedBox(height: 6),
-            _Row('Delivery', cart.deliveryFee.toJODOrFree()),
+            _Row('Delivery', deliveryFee.toJODOrFree()),
             const SizedBox(height: 12),
             const Divider(color: kBorder, height: 1),
             const SizedBox(height: 12),
-            _Row('Total', cart.grandTotal.toJOD(), bold: true),
+            _Row('Total', (cart.grandTotal + deliveryFee).toJOD(), bold: true),
             const SizedBox(height: 24),
 
             PrimaryButton(
@@ -425,15 +439,16 @@ class _AddressTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      address.label ?? 'Address',
+                      address.label,
                       style: AppTextStyles.titleSmall,
                     ),
                     const SizedBox(height: 4),
                     Text(
                       [
-                        address.addressLine1,
-                        address.city,
-                      ].where((s) => s != null && s.isNotEmpty).join(', '),
+                        address.fullAddress,
+                        if (address.city != null && address.city!.isNotEmpty)
+                          address.city!,
+                      ].join(', '),
                       style: AppTextStyles.bodySmall.copyWith(color: kSlate),
                     ),
                   ],

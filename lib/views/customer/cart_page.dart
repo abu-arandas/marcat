@@ -161,12 +161,15 @@ class _CartItemsList extends StatelessWidget {
           color: kBorder,
           height: 1,
         ),
-        itemBuilder: (_, i) => _CartItemRow(
-          item: ctrl.items[i],
-          onRemove: () => ctrl.removeItem(i),
-          onIncrement: () => ctrl.incrementItem(i),
-          onDecrement: () => ctrl.decrementItem(i),
-        ),
+        itemBuilder: (_, i) {
+          final item = ctrl.items[i];
+          return _CartItemRow(
+            item: item,
+            onRemove: () => ctrl.removeItem(item.productSizeId, item.colorId),
+            onIncrement: () => ctrl.updateQuantity(item.productSizeId, item.colorId, item.quantity + 1),
+            onDecrement: () => ctrl.updateQuantity(item.productSizeId, item.colorId, item.quantity - 1),
+          );
+        },
       );
 }
 
@@ -380,7 +383,7 @@ class _OrderSummary extends StatelessWidget {
             // Delivery
             _SummaryRow(
               label: 'Delivery',
-              value: ctrl.deliveryFee.toJODOrFree(),
+              value: 0.0.toJODOrFree(),
             ),
 
             const SizedBox(height: 16),

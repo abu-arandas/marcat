@@ -293,7 +293,7 @@ class _OrderCard extends StatelessWidget {
                     ),
                   ),
                   _StatusBadge(
-                    status: SaleStatusX.fromDb(order.status),
+                    status: order.status,
                   ),
                 ],
               ),

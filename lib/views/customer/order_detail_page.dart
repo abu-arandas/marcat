@@ -179,7 +179,7 @@ class _OrderSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final status = SaleStatusX.fromDb(order.status);
+    final status = order.status;
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -216,18 +216,18 @@ class _OrderSummary extends StatelessWidget {
             label: 'Subtotal',
             value: order.subtotal.toJOD(),
           ),
-          if ((order.deliveryFee ?? 0) > 0) ...[
+          if (order.shippingCost > 0) ...[
             const SizedBox(height: 8),
             _DetailRow(
               label: 'Delivery',
-              value: order.deliveryFee!.toJOD(),
+              value: order.shippingCost.toJOD(),
             ),
           ],
-          if ((order.discountAmount ?? 0) > 0) ...[
+          if (order.discountTotal > 0) ...[
             const SizedBox(height: 8),
             _DetailRow(
               label: 'Discount',
-              value: '− ${order.discountAmount!.toJOD()}',
+              value: '− ${order.discountTotal.toJOD()}',
               valueColor: AppColors.statusGreen,
             ),
           ],
@@ -371,19 +371,6 @@ class _ItemRow extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  if (item.sizeLabel != null || item.colorName != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      [
-                        if (item.sizeLabel != null)
-                          'Size: ${item.sizeLabel}',
-                        if (item.colorName != null)
-                          'Color: ${item.colorName}',
-                      ].join('  ·  '),
-                      style: AppTextStyles.bodySmall
-                          .copyWith(color: kSlate),
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -393,7 +380,7 @@ class _ItemRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  item.lineTotal.toJOD(),
+                  item.totalPrice.toJOD(),
                   style: AppTextStyles.priceMedium,
                 ),
                 Text(

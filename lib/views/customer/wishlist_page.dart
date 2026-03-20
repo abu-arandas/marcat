@@ -7,14 +7,10 @@ import 'package:get/get.dart';
 import 'package:shimmer/shimmer.dart';
 
 import 'package:marcat/controllers/auth_controller.dart';
-import 'package:marcat/controllers/cart_controller.dart';
 import 'package:marcat/controllers/product_controller.dart';
 import 'package:marcat/core/extensions/currency_extensions.dart';
 import 'package:marcat/core/router/app_router.dart';
-import 'package:marcat/models/cart_item_model.dart';
 import 'package:marcat/models/product_model.dart';
-
-import '../../models/cart_item_model.dart';
 import 'scaffold/app_scaffold.dart';
 import 'shared/brand.dart';
 import 'shared/empty_state.dart';
@@ -203,7 +199,7 @@ class _WishlistProductCard extends StatefulWidget {
 
 class _WishlistProductCardState extends State<_WishlistProductCard> {
   bool _hovered = false;
-  bool _addingToCart = false;
+  final bool _addingToCart = false;
 
   Future<void> _addToCart() async {
     if (_addingToCart) return;

@@ -9,10 +9,8 @@ import 'package:marcat/controllers/account_controller.dart';
 import 'package:marcat/controllers/auth_controller.dart';
 import 'package:marcat/core/constants/app_colors.dart';
 import 'package:marcat/core/constants/app_text_styles.dart';
-import 'package:marcat/core/extensions/currency_extensions.dart';
 import 'package:marcat/core/extensions/date_extensions.dart';
 import 'package:marcat/core/router/app_router.dart';
-import 'package:marcat/models/enums.dart';
 import 'package:marcat/models/loyalty_transaction_model.dart';
 import 'package:marcat/models/user_model.dart';
 
@@ -93,12 +91,12 @@ class _ProfilePageState extends State<ProfilePage> {
     if (uid == null) return;
     if (mounted) setState(() => _loyaltyLoading = true);
     try {
-      final txns = await _accountCtrl.fetchLoyaltyTransactions(uid);
+      await _accountCtrl.fetchLoyaltyTransactions(customerId: uid);
       if (mounted) {
         setState(() {
           _loyaltyTransactions
             ..clear()
-            ..addAll(txns);
+            ..addAll(_accountCtrl.loyaltyTransactions);
           _loyaltyLoading = false;
         });
       }
@@ -115,11 +113,13 @@ class _ProfilePageState extends State<ProfilePage> {
     if (uid == null) return;
     setState(() => _isSaving = true);
     try {
-      await _accountCtrl.updateProfile(
+      await _accountCtrl.updateUserProfile(
         uid,
-        firstName: _firstNameCtrl.text.trim(),
-        lastName: _lastNameCtrl.text.trim(),
-        phone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
+        {
+          'first_name': _firstNameCtrl.text.trim(),
+          'last_name': _lastNameCtrl.text.trim(),
+          'phone': _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
+        }
       );
       if (mounted) {
         Get.snackbar(
@@ -173,7 +173,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final uid = _auth.state.value.user?.id;
     if (uid == null) return;
     try {
-      await _accountCtrl.uploadAvatar(uid, xfile.path);
+      await _accountCtrl.uploadAvatar(uid, await xfile.readAsBytes());
     } catch (e) {
       if (mounted) Get.snackbar('Error', e.toString());
     }
@@ -366,7 +366,7 @@ class _ProfileSidebar extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              user.email,
+              user.phone ?? '',
               style: AppTextStyles.bodySmall.copyWith(color: kSlate),
               textAlign: TextAlign.center,
               maxLines: 1,
@@ -465,41 +465,7 @@ class _SidebarTab extends StatelessWidget {
       );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// _LoyaltyBadge
-// ─────────────────────────────────────────────────────────────────────────────
 
-class _LoyaltyBadge extends StatelessWidget {
-  const _LoyaltyBadge({required this.tier});
-  final LoyaltyTier tier;
-
-  Color get _color => switch (tier) {
-        LoyaltyTier.bronze => const Color(0xFFCD7F32),
-        LoyaltyTier.silver => const Color(0xFF9E9E9E),
-        LoyaltyTier.gold => AppColors.marcatGold,
-        LoyaltyTier.platinum => const Color(0xFF6A5ACD),
-      };
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        decoration: BoxDecoration(
-          color: _color.withAlpha(26),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _color.withAlpha(77)),
-        ),
-        child: Text(
-          tier.displayLabel.toUpperCase(),
-          style: TextStyle(
-            fontFamily: 'IBMPlexSansArabic',
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.5,
-            color: _color,
-          ),
-        ),
-      );
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // _ProfileContent — tab body

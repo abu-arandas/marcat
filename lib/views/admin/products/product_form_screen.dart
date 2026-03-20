@@ -1,12 +1,33 @@
 // lib/views/admin/products/product_form_screen.dart
+//
+// Create / Edit product form.
+//
+// Mode is determined by the presence of [productId]:
+//   null    → Create mode — blank form, "Create Product" CTA.
+//   non-null → Edit mode   — prefills via [ProductController.fetchProductById].
+//
+// Categories and brands are loaded from [ProductController]; status is a
+// segmented picker; store assignment is handled separately in inventory.
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
 import '../../../controllers/product_controller.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../models/enums.dart';
+import '../shared/admin_widgets.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ProductFormScreen
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Form screen for creating or editing a product.
+///
+/// Accessible via:
+///  - [AppRoutes.adminProductsCreate]   (productId == null)
+///  - [AppRoutes.adminProductsEdit]     (productId != null)
 class ProductFormScreen extends StatefulWidget {
   const ProductFormScreen({super.key, this.productId});
 
@@ -18,145 +39,196 @@ class ProductFormScreen extends StatefulWidget {
 }
 
 class _ProductFormScreenState extends State<ProductFormScreen> {
+  // ── Form ──────────────────────────────────────────────────────────────────
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _skuController = TextEditingController();
-  final _priceController = TextEditingController();
-  final _descriptionController = TextEditingController();
+  final _nameCtrl = TextEditingController();
+  final _skuCtrl = TextEditingController();
+  final _priceCtrl = TextEditingController();
+  final _descCtrl = TextEditingController();
 
-  bool _isLoading = false;
+  // ── State ─────────────────────────────────────────────────────────────────
+  bool _isPrefilling = false;
+  bool _isSubmitting = false;
+  ProductStatus _status = ProductStatus.active;
+  int? _selectedCategoryId;
+  int? _selectedBrandId;
+
+  bool get _isEditMode => widget.productId != null;
 
   ProductController get _productCtrl => Get.find<ProductController>();
+
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   @override
   void initState() {
     super.initState();
-    if (widget.productId != null) {
-      _prefillForm();
+    _loadMeta();
+    if (_isEditMode) _prefillForm();
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _skuCtrl.dispose();
+    _priceCtrl.dispose();
+    _descCtrl.dispose();
+    super.dispose();
+  }
+
+  // ── Data ──────────────────────────────────────────────────────────────────
+
+  /// Ensures categories + brands are available for dropdowns.
+  Future<void> _loadMeta() async {
+    if (_productCtrl.categories.isEmpty || _productCtrl.brands.isEmpty) {
+      await _productCtrl.loadCatalogMeta();
     }
   }
 
-  /// Pre-fills the form when editing an existing product.
+  /// Populates form fields when editing an existing product.
   Future<void> _prefillForm() async {
-    setState(() => _isLoading = true);
+    setState(() => _isPrefilling = true);
     try {
       final product = await _productCtrl.fetchProductById(widget.productId!);
-      if (mounted) {
-        _nameController.text = product.name;
-        _skuController.text = product.sku;
-        _priceController.text = product.basePrice.toStringAsFixed(2);
-        _descriptionController.text = product.description ?? '';
-      }
+      if (!mounted) return;
+      _nameCtrl.text = product.name;
+      _skuCtrl.text = product.sku;
+      _priceCtrl.text = product.basePrice.toStringAsFixed(2);
+      _descCtrl.text = product.description ?? '';
+      setState(() {
+        _status = ProductStatusX.fromDb(product.status?.toString());
+        _selectedCategoryId = product.categoryId;
+        _selectedBrandId = product.brandId;
+        _isPrefilling = false;
+      });
     } catch (e) {
-      Get.snackbar('Error', 'Could not load product: ${e.toString()}');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isPrefilling = false);
+        Get.snackbar(
+          'Error',
+          'Could not load product: $e',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: AppColors.statusRedLight,
+          colorText: AppColors.statusRed,
+        );
+      }
     }
   }
+
+  // ── Submit ────────────────────────────────────────────────────────────────
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final name = _nameController.text.trim();
-    final sku = _skuController.text.trim();
-    final priceStr = _priceController.text.trim();
-    final price = double.tryParse(priceStr);
-
+    final price = double.tryParse(_priceCtrl.text.trim());
     if (price == null || price <= 0) {
       Get.snackbar('Validation Error', 'Please enter a valid price.');
       return;
     }
 
-    setState(() => _isLoading = true);
+    if (!mounted) return;
+    setState(() => _isSubmitting = true);
+
     try {
-      final data = {
-        'name': name,
-        'sku': sku,
+      final data = <String, dynamic>{
+        'name': _nameCtrl.text.trim(),
+        'sku': _skuCtrl.text.trim(),
         'base_price': price,
-        'description': _descriptionController.text.trim().isEmpty
-            ? null
-            : _descriptionController.text.trim(),
-        'status': 'active',
+        'status': _status.dbValue,
+        if (_descCtrl.text.trim().isNotEmpty)
+          'description': _descCtrl.text.trim(),
+        if (_selectedCategoryId != null) 'category_id': _selectedCategoryId,
+        if (_selectedBrandId != null) 'brand_id': _selectedBrandId,
       };
 
-      if (widget.productId == null) {
+      if (!_isEditMode) {
         await _productCtrl.createProduct(data);
-        Get.snackbar('Success', 'Product created successfully.');
+        _showSuccess('Product created successfully.');
       } else {
         await _productCtrl.updateProduct(widget.productId!, data);
-        Get.snackbar('Success', 'Product updated successfully.');
+        _showSuccess('Product updated successfully.');
       }
-      Get.back();
+
+      if (mounted) Get.back();
     } catch (e) {
-      Get.snackbar('Error', e.toString());
+      if (mounted) {
+        Get.snackbar(
+          'Error',
+          e.toString(),
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: AppColors.statusRedLight,
+          colorText: AppColors.statusRed,
+        );
+      }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _skuController.dispose();
-    _priceController.dispose();
-    _descriptionController.dispose();
-    super.dispose();
-  }
+  void _showSuccess(String message) => Get.snackbar(
+        'Success',
+        message,
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: AppColors.successGreenLight,
+        colorText: AppColors.statusGreen,
+      );
+
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surfaceGrey,
       appBar: AppBar(
-        title: widget.productId == null
-            ? const Text('Add Product')
-            : const Text('Edit Product'),
+        title: Text(_isEditMode ? 'Edit Product' : 'New Product'),
+        centerTitle: false,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppDimensions.pagePaddingH),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ── Basic information card ─────────────────────────────────
-              Container(
-                padding: const EdgeInsets.all(AppDimensions.space24),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceWhite,
-                  borderRadius: BorderRadius.circular(AppDimensions.radiusS),
-                  border: Border.all(color: AppColors.borderLight),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Basic Information', style: AppTextStyles.titleMedium),
-                    const SizedBox(height: AppDimensions.space24),
+      body: _isPrefilling ? const AdminFormSkeleton() : _buildForm(context),
+    );
+  }
 
+  Widget _buildForm(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppDimensions.pagePaddingH),
+      child: Center(
+        child: ConstrainedBox(
+          // Cap form width on wide screens for readability.
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // ── Basic information ──────────────────────────────────────
+                _FormSection(
+                  title: 'Basic Information',
+                  icon: Icons.info_outline_rounded,
+                  children: [
                     // Product name
                     TextFormField(
-                      controller: _nameController,
+                      controller: _nameCtrl,
                       decoration: const InputDecoration(
-                        labelText: 'Product Name',
+                        labelText: 'Product Name *',
                         border: OutlineInputBorder(),
                       ),
-                      validator: (v) => v == null || v.trim().isEmpty
+                      textCapitalization: TextCapitalization.words,
+                      validator: (v) => (v == null || v.trim().isEmpty)
                           ? 'Product name is required.'
                           : null,
                     ),
                     const SizedBox(height: AppDimensions.space16),
 
-                    // SKU + Price row
+                    // SKU + Price
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: TextFormField(
-                            controller: _skuController,
+                            controller: _skuCtrl,
                             decoration: const InputDecoration(
-                              labelText: 'SKU',
+                              labelText: 'SKU *',
                               border: OutlineInputBorder(),
                             ),
-                            validator: (v) => v == null || v.trim().isEmpty
+                            validator: (v) => (v == null || v.trim().isEmpty)
                                 ? 'SKU is required.'
                                 : null,
                           ),
@@ -164,10 +236,11 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                         const SizedBox(width: AppDimensions.space16),
                         Expanded(
                           child: TextFormField(
-                            controller: _priceController,
+                            controller: _priceCtrl,
                             decoration: const InputDecoration(
-                              labelText: 'Base Price (JOD)',
+                              labelText: 'Base Price (JOD) *',
                               border: OutlineInputBorder(),
+                              prefixText: 'JOD ',
                             ),
                             keyboardType: const TextInputType.numberWithOptions(
                                 decimal: true),
@@ -176,10 +249,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                                 return 'Price is required.';
                               }
                               final p = double.tryParse(v.trim());
-                              if (p == null || p <= 0) {
-                                return 'Enter a valid price > 0.';
-                              }
-                              return null;
+                              return (p == null || p <= 0)
+                                  ? 'Enter a price greater than 0.'
+                                  : null;
                             },
                           ),
                         ),
@@ -187,32 +259,226 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                     ),
                     const SizedBox(height: AppDimensions.space16),
 
-                    // Description (multi-line)
+                    // Description
                     TextFormField(
-                      controller: _descriptionController,
+                      controller: _descCtrl,
                       decoration: const InputDecoration(
                         labelText: 'Description',
                         border: OutlineInputBorder(),
+                        alignLabelWithHint: true,
                       ),
                       maxLines: 4,
+                      textCapitalization: TextCapitalization.sentences,
                     ),
                   ],
                 ),
-              ),
 
-              const SizedBox(height: AppDimensions.space24),
+                const SizedBox(height: AppDimensions.space24),
 
-              // ── Submit button ──────────────────────────────────────────
-              ElevatedButton(
-                onPressed: _isLoading ? null : _submit,
-                child: Text(
-                  widget.productId == null ? 'Create Product' : 'Save Changes',
+                // ── Classification ─────────────────────────────────────────
+                _FormSection(
+                  title: 'Classification',
+                  icon: Icons.label_outline_rounded,
+                  children: [
+                    // Category dropdown
+                    Obx(() {
+                      final cats = _productCtrl.categories;
+                      return DropdownButtonFormField<int?>(
+                        value: _selectedCategoryId,
+                        decoration: const InputDecoration(
+                          labelText: 'Category',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: [
+                          const DropdownMenuItem(
+                            value: null,
+                            child: Text('— None —'),
+                          ),
+                          ...cats.map(
+                            (c) => DropdownMenuItem(
+                              value: c.id,
+                              child: Text(c.name),
+                            ),
+                          ),
+                        ],
+                        onChanged: (v) =>
+                            setState(() => _selectedCategoryId = v),
+                      );
+                    }),
+                    const SizedBox(height: AppDimensions.space16),
+
+                    // Brand dropdown
+                    Obx(() {
+                      final brands = _productCtrl.brands;
+                      return DropdownButtonFormField<int?>(
+                        value: _selectedBrandId,
+                        decoration: const InputDecoration(
+                          labelText: 'Brand',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: [
+                          const DropdownMenuItem(
+                            value: null,
+                            child: Text('— None —'),
+                          ),
+                          ...brands.map(
+                            (b) => DropdownMenuItem(
+                              value: b.id,
+                              child: Text(b.name),
+                            ),
+                          ),
+                        ],
+                        onChanged: (v) => setState(() => _selectedBrandId = v),
+                      );
+                    }),
+                  ],
                 ),
-              ),
-            ],
+
+                const SizedBox(height: AppDimensions.space24),
+
+                // ── Status ────────────────────────────────────────────────
+                _FormSection(
+                  title: 'Visibility',
+                  icon: Icons.visibility_outlined,
+                  children: [
+                    Text(
+                      'Product Status',
+                      style: AppTextStyles.bodySmall
+                          .copyWith(color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: AppDimensions.space8),
+                    _StatusSelector(
+                      selected: _status,
+                      onChanged: (s) => setState(() => _status = s),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: AppDimensions.space32),
+
+                // ── Submit ────────────────────────────────────────────────
+                FilledButton(
+                  onPressed: _isSubmitting ? null : _submit,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.marcatNavy,
+                    foregroundColor: AppColors.textOnDark,
+                    minimumSize: const Size.fromHeight(
+                        AppDimensions.buttonHeightPrimary),
+                    shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(AppDimensions.radiusS),
+                    ),
+                  ),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Text(
+                          _isEditMode ? 'Save Changes' : 'Create Product',
+                          style: AppTextStyles.labelLarge
+                              .copyWith(color: AppColors.textOnDark),
+                        ),
+                ),
+
+                const SizedBox(height: AppDimensions.space64),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _FormSection
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Titled card container grouping related form fields.
+class _FormSection extends StatelessWidget {
+  const _FormSection({
+    required this.title,
+    required this.icon,
+    required this.children,
+  });
+
+  final String title;
+  final IconData icon;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(AppDimensions.space20),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceWhite,
+          borderRadius: BorderRadius.circular(AppDimensions.radiusS),
+          border: Border.all(color: AppColors.borderLight),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Section title row
+            Row(
+              children: [
+                Icon(icon,
+                    size: AppDimensions.iconS, color: AppColors.marcatGold),
+                const SizedBox(width: AppDimensions.space8),
+                Text(title, style: AppTextStyles.titleSmall),
+              ],
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: AppDimensions.space12),
+              child: Divider(height: 1, color: AppColors.borderLight),
+            ),
+            ...children,
+          ],
+        ),
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _StatusSelector
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Segmented button row to pick Active / Draft / Archived.
+class _StatusSelector extends StatelessWidget {
+  const _StatusSelector({
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final ProductStatus selected;
+  final ValueChanged<ProductStatus> onChanged;
+
+  @override
+  Widget build(BuildContext context) => SegmentedButton<ProductStatus>(
+        segments: const [
+          ButtonSegment(
+            value: ProductStatus.active,
+            icon: Icon(Icons.check_circle_outline_rounded, size: 16),
+            label: Text('Active'),
+          ),
+          ButtonSegment(
+            value: ProductStatus.draft,
+            icon: Icon(Icons.edit_note_rounded, size: 16),
+            label: Text('Draft'),
+          ),
+          ButtonSegment(
+            value: ProductStatus.archived,
+            icon: Icon(Icons.archive_outlined, size: 16),
+            label: Text('Archived'),
+          ),
+        ],
+        selected: {selected},
+        onSelectionChanged: (Set<ProductStatus> s) => onChanged(s.first),
+        style: ButtonStyle(
+          side: WidgetStateProperty.all(
+              const BorderSide(color: AppColors.borderMedium)),
+        ),
+      );
 }

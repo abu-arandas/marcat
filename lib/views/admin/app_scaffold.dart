@@ -1,15 +1,36 @@
-// lib/presentation/admin/app_scaffold.dart
+// lib/views/admin/app_scaffold.dart
+//
+// Root shell for every admin screen.
+//
+// Layout strategy:
+//  • Desktop / Tablet  → extended NavigationRail (left) + IndexedStack (right)
+//  • Mobile            → IndexedStack body + NavigationBar (bottom)
+//
+// The NavigationRail uses the brand navy background with gold accents,
+// matching the dark drawer treatment on the customer side.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bootstrap5/flutter_bootstrap5.dart';
+
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_dimensions.dart';
+import '../../core/constants/app_text_styles.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'products/product_list_screen.dart';
 import 'orders/order_list_screen.dart';
 import 'staff/staff_list_screen.dart';
 import 'settings/admin_settings_screen.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// AdminAppScaffold
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Root navigation scaffold for the admin panel.
+///
+/// Switches between a side [NavigationRail] on tablet/desktop and a
+/// [NavigationBar] on mobile — keeping the admin content always inside
+/// an [IndexedStack] so each tab preserves its scroll position and
+/// controller state.
 class AdminAppScaffold extends StatefulWidget {
   const AdminAppScaffold({super.key});
 
@@ -18,149 +39,268 @@ class AdminAppScaffold extends StatefulWidget {
 }
 
 class _AdminAppScaffoldState extends State<AdminAppScaffold> {
-  int currentIndex = 0;
+  int _currentIndex = 0;
 
-  final pages = [
-    const AdminDashboardScreen(),
-    const AdminProductListScreen(),
-    const AdminOrderListScreen(),
-    const AdminStaffListScreen(),
-    const AdminSettingsScreen(),
+  // Pages are instantiated once and kept alive inside the IndexedStack.
+  static const _pages = [
+    AdminDashboardScreen(),
+    AdminProductListScreen(),
+    AdminOrderListScreen(),
+    AdminStaffListScreen(),
+    AdminSettingsScreen(),
   ];
 
-  void _onTap(int index) {
-    setState(() {
-      currentIndex = index;
-    });
-  }
+  // ── Destination definitions ───────────────────────────────────────────────
+
+  static const _destinations = <_AdminDestination>[
+    _AdminDestination(
+      icon: Icons.dashboard_outlined,
+      selectedIcon: Icons.dashboard_rounded,
+      label: 'Dashboard',
+    ),
+    _AdminDestination(
+      icon: Icons.inventory_2_outlined,
+      selectedIcon: Icons.inventory_2_rounded,
+      label: 'Products',
+    ),
+    _AdminDestination(
+      icon: Icons.receipt_long_outlined,
+      selectedIcon: Icons.receipt_long_rounded,
+      label: 'Orders',
+    ),
+    _AdminDestination(
+      icon: Icons.group_outlined,
+      selectedIcon: Icons.group_rounded,
+      label: 'Staff',
+    ),
+    _AdminDestination(
+      icon: Icons.settings_outlined,
+      selectedIcon: Icons.settings_rounded,
+      label: 'Settings',
+    ),
+  ];
+
+  void _onDestinationSelected(int index) =>
+      setState(() => _currentIndex = index);
+
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     return FlutterBootstrap5(
       builder: (context) {
-        final breakPoint = BootstrapTheme.of(context).currentBreakPoint;
-        final breakPoints = BootstrapTheme.of(context).breakPoints;
-        final isDesktop = breakPoint.isBreakPointOrLarger(breakPoints.lg);
-        final isTablet = breakPoint == breakPoints.md;
+        final bp = BootstrapTheme.of(context);
+        final isDesktop =
+            bp.currentBreakPoint.isBreakPointOrLarger(bp.breakPoints.lg);
+        final isTablet = bp.currentBreakPoint == bp.breakPoints.md;
 
         if (isDesktop || isTablet) {
-          return Scaffold(
-            backgroundColor: AppColors.surfaceGrey,
-            body: Row(
-              children: [
-                NavigationRail(
-                  backgroundColor: AppColors.marcatBlack,
-                  indicatorColor: AppColors.marcatGold.withOpacity(0.2),
-                  unselectedIconTheme:
-                      const IconThemeData(color: AppColors.textDisabled),
-                  selectedIconTheme:
-                      const IconThemeData(color: AppColors.marcatGold),
-                  unselectedLabelTextStyle:
-                      const TextStyle(color: AppColors.textDisabled),
-                  selectedLabelTextStyle:
-                      const TextStyle(color: AppColors.marcatGold),
-                  extended: isDesktop,
-                  selectedIndex: currentIndex,
-                  onDestinationSelected: _onTap,
-                  leading: isDesktop
-                      ? const Padding(
-                          padding: EdgeInsets.symmetric(
-                              vertical: AppDimensions.space24),
-                          child: Text(
-                            'MARCAT ADMIN',
-                            style: TextStyle(
-                              color: AppColors.marcatGold,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 2,
-                            ),
-                          ),
-                        )
-                      : const SizedBox(height: AppDimensions.space24),
-                  destinations: const [
-                    NavigationRailDestination(
-                      icon: Icon(Icons.dashboard_outlined),
-                      selectedIcon: Icon(Icons.dashboard),
-                      label: Text('Admin Dashboard'),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.inventory_2_outlined),
-                      selectedIcon: Icon(Icons.inventory_2),
-                      label: Text('Admin Products'),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.receipt_long_outlined),
-                      selectedIcon: Icon(Icons.receipt_long),
-                      label: Text('Admin Orders'),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.group_outlined),
-                      selectedIcon: Icon(Icons.group),
-                      label: Text('Staff'),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.settings_outlined),
-                      selectedIcon: Icon(Icons.settings),
-                      label: Text('Settings'),
-                    ),
-                  ],
-                ),
-                const VerticalDivider(
-                    thickness: 1, width: 1, color: AppColors.borderMedium),
-                Expanded(
-                  child: FB5Container(
-                    child: IndexedStack(
-                      index: currentIndex,
-                      children: pages,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          return _DesktopLayout(
+            currentIndex: _currentIndex,
+            destinations: _destinations,
+            pages: _pages,
+            extended: isDesktop,
+            onDestinationSelected: _onDestinationSelected,
           );
         }
 
-        return Scaffold(
-          backgroundColor: AppColors.surfaceGrey,
-          body: FB5Container(
-            child: IndexedStack(
-              index: currentIndex,
-              children: pages,
-            ),
-          ),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: currentIndex,
-            onDestinationSelected: _onTap,
-            backgroundColor: AppColors.marcatCream,
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.dashboard_outlined),
-                selectedIcon: Icon(Icons.dashboard),
-                label: 'Admin Dashboard',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.inventory_2_outlined),
-                selectedIcon: Icon(Icons.inventory_2),
-                label: 'Admin Products',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.receipt_long_outlined),
-                selectedIcon: Icon(Icons.receipt_long),
-                label: 'Admin Orders',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.group_outlined),
-                selectedIcon: Icon(Icons.group),
-                label: 'Staff',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.settings_outlined),
-                selectedIcon: Icon(Icons.settings),
-                label: 'Settings',
-              ),
-            ],
-          ),
+        return _MobileLayout(
+          currentIndex: _currentIndex,
+          destinations: _destinations,
+          pages: _pages,
+          onDestinationSelected: _onDestinationSelected,
         );
       },
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _DesktopLayout
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _DesktopLayout extends StatelessWidget {
+  const _DesktopLayout({
+    required this.currentIndex,
+    required this.destinations,
+    required this.pages,
+    required this.extended,
+    required this.onDestinationSelected,
+  });
+
+  final int currentIndex;
+  final List<_AdminDestination> destinations;
+  final List<Widget> pages;
+  final bool extended;
+  final ValueChanged<int> onDestinationSelected;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: AppColors.surfaceGrey,
+        body: Row(
+          children: [
+            // ── Navigation Rail ───────────────────────────────────────────
+            NavigationRail(
+              backgroundColor: AppColors.marcatBlack,
+              // withAlpha(51) ≈ 20 % opacity — replaces deprecated withOpacity
+              indicatorColor: AppColors.marcatGold.withAlpha(51),
+              unselectedIconTheme: const IconThemeData(
+                color: AppColors.textDisabled,
+                size: AppDimensions.iconL,
+              ),
+              selectedIconTheme: const IconThemeData(
+                color: AppColors.marcatGold,
+                size: AppDimensions.iconL,
+              ),
+              unselectedLabelTextStyle: const TextStyle(
+                fontFamily: 'IBMPlexSansArabic',
+                fontSize: 12,
+                color: AppColors.textDisabled,
+              ),
+              selectedLabelTextStyle: const TextStyle(
+                fontFamily: 'IBMPlexSansArabic',
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.marcatGold,
+              ),
+              extended: extended,
+              selectedIndex: currentIndex,
+              onDestinationSelected: onDestinationSelected,
+              leading: _RailLeading(extended: extended),
+              destinations: destinations
+                  .map((d) => NavigationRailDestination(
+                        icon: Icon(d.icon),
+                        selectedIcon: Icon(d.selectedIcon),
+                        label: Text(d.label),
+                      ))
+                  .toList(),
+            ),
+
+            const VerticalDivider(
+              thickness: 1,
+              width: 1,
+              color: AppColors.borderMedium,
+            ),
+
+            // ── Content ───────────────────────────────────────────────────
+            Expanded(
+              child: IndexedStack(
+                index: currentIndex,
+                children: pages,
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _MobileLayout
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _MobileLayout extends StatelessWidget {
+  const _MobileLayout({
+    required this.currentIndex,
+    required this.destinations,
+    required this.pages,
+    required this.onDestinationSelected,
+  });
+
+  final int currentIndex;
+  final List<_AdminDestination> destinations;
+  final List<Widget> pages;
+  final ValueChanged<int> onDestinationSelected;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: AppColors.surfaceGrey,
+        body: IndexedStack(
+          index: currentIndex,
+          children: pages,
+        ),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: currentIndex,
+          onDestinationSelected: onDestinationSelected,
+          backgroundColor: AppColors.marcatBlack,
+          indicatorColor: AppColors.marcatGold.withAlpha(51),
+          labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
+          destinations: destinations
+              .map((d) => NavigationDestination(
+                    icon: Icon(d.icon, color: AppColors.textDisabled),
+                    selectedIcon:
+                        Icon(d.selectedIcon, color: AppColors.marcatGold),
+                    label: d.label,
+                  ))
+              .toList(),
+        ),
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _RailLeading
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Brand logo header for the extended navigation rail.
+class _RailLeading extends StatelessWidget {
+  const _RailLeading({required this.extended});
+
+  final bool extended;
+
+  @override
+  Widget build(BuildContext context) => extended
+      ? Padding(
+          padding: const EdgeInsets.symmetric(
+            vertical: AppDimensions.space24,
+            horizontal: AppDimensions.space16,
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.storefront_rounded,
+                color: AppColors.marcatGold,
+                size: AppDimensions.iconL,
+              ),
+              const SizedBox(width: AppDimensions.space8),
+              Text(
+                'MARCAT',
+                style: AppTextStyles.labelLarge.copyWith(
+                  color: AppColors.marcatGold,
+                  letterSpacing: 3,
+                ),
+              ),
+              const SizedBox(width: AppDimensions.space4),
+              Text(
+                'ADMIN',
+                style: AppTextStyles.labelSmall.copyWith(
+                  color: AppColors.marcatSlate,
+                  letterSpacing: 2,
+                ),
+              ),
+            ],
+          ),
+        )
+      : Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppDimensions.space24),
+          child: const Icon(
+            Icons.storefront_rounded,
+            color: AppColors.marcatGold,
+            size: AppDimensions.iconL,
+          ),
+        );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _AdminDestination  (data class)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AdminDestination {
+  const _AdminDestination({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+  });
+
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
 }

@@ -307,29 +307,7 @@ class _ShopProductCardState extends State<_ShopProductCard> {
                         ),
                       ),
 
-                      // Sale badge
-                      if ((widget.product.comparePrice ?? 0) >
-                          widget.product.basePrice)
-                        Positioned(
-                          top: 10,
-                          left: 10,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            color: kRed,
-                            child: const Text(
-                              'SALE',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.5,
-                              ),
-                            ),
-                          ),
-                        ),
+
 
                       // Wishlist toggle
                       Positioned(
@@ -441,19 +419,6 @@ class _ShopProductCardState extends State<_ShopProductCard> {
                       color: kNavy,
                     ),
                   ),
-                  if ((widget.product.comparePrice ?? 0) >
-                      widget.product.basePrice) ...[
-                    const SizedBox(width: 8),
-                    Text(
-                      widget.product.comparePrice!.toJOD(),
-                      style: const TextStyle(
-                        fontFamily: 'IBMPlexMono',
-                        fontSize: 12,
-                        color: kSlate,
-                        decoration: TextDecoration.lineThrough,
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ],

@@ -50,7 +50,7 @@ class _HomePageState extends State<HomePage> {
   String? _arrivalsError;
   String? _bestSellersError;
   String? _categoriesError;
-  String? _offersError;
+
 
   // ── Controllers ───────────────────────────────────────────────────────────
   ProductController get _productCtrl => Get.find<ProductController>();
@@ -100,7 +100,7 @@ class _HomePageState extends State<HomePage> {
     if (mounted) setState(() => _loadingBestSellers = true);
     _bestSellersError = null;
     try {
-      final products = await _productCtrl.fetchBestSellers(limit: 8);
+      final products = await _productCtrl.fetchTopProducts(limit: 8);
       if (mounted) {
         setState(() {
           _bestSellers
@@ -175,7 +175,6 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadOffers() async {
     if (mounted) setState(() => _loadingOffers = true);
-    _offersError = null;
     try {
       final offers = await _productCtrl.fetchActiveOffers();
       if (mounted) {
@@ -189,7 +188,6 @@ class _HomePageState extends State<HomePage> {
     } catch (_) {
       if (mounted) {
         setState(() {
-          _offersError = 'Could not load offers.';
           _loadingOffers = false;
         });
       }
@@ -353,9 +351,9 @@ class _HeroCarouselState extends State<_HeroCarousel> {
               width: double.infinity,
               height: height,
               placeholder: (_, __) =>
-                  const ColoredBox(color: AppColors.marcatNavy),
+                  const ColoredBox(color: kNavy),
               errorWidget: (_, __, ___) =>
-                  const ColoredBox(color: AppColors.marcatNavy),
+                  const ColoredBox(color: kNavy),
             ),
           ),
 
@@ -1059,9 +1057,6 @@ class _ProductCardState extends State<_ProductCard> {
                         child: Column(
                           children: [
                             if (widget.isNew) const _Badge('NEW', kGold),
-                            if ((widget.product.comparePrice ?? 0) >
-                                widget.product.basePrice)
-                              const _Badge('SALE', kRed),
                           ],
                         ),
                       ),
@@ -1174,19 +1169,6 @@ class _ProductCardState extends State<_ProductCard> {
                       color: kNavy,
                     ),
                   ),
-                  if ((widget.product.comparePrice ?? 0) >
-                      widget.product.basePrice) ...[
-                    const SizedBox(width: 8),
-                    Text(
-                      widget.product.comparePrice!.toJOD(),
-                      style: const TextStyle(
-                        fontFamily: 'IBMPlexMono',
-                        fontSize: 12,
-                        color: kSlate,
-                        decoration: TextDecoration.lineThrough,
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ],
