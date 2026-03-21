@@ -3,12 +3,14 @@
 // Shared form section card widget used by both product_form_screen
 // and staff_form_screen. Previously duplicated as _FormSection in
 // each file — now extracted to a single source of truth.
+//
+// ✅ REFACTORED: uses brand.dart color aliases — zero raw AppColors.
 
 import 'package:flutter/material.dart';
 
-import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_text_styles.dart';
+import 'brand.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AdminFormSection
@@ -34,9 +36,9 @@ class AdminFormSection extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.all(AppDimensions.space20),
         decoration: BoxDecoration(
-          color: AppColors.surfaceWhite,
+          color: kSurfaceWhite,
           borderRadius: BorderRadius.circular(AppDimensions.radiusS),
-          border: Border.all(color: AppColors.borderLight),
+          border: Border.all(color: kBorder),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -46,7 +48,7 @@ class AdminFormSection extends StatelessWidget {
                 Icon(
                   icon,
                   size: AppDimensions.iconS,
-                  color: AppColors.marcatGold,
+                  color: kGold,
                 ),
                 const SizedBox(width: AppDimensions.space8),
                 Text(title, style: AppTextStyles.titleSmall),
@@ -55,7 +57,7 @@ class AdminFormSection extends StatelessWidget {
             const Padding(
               padding:
                   EdgeInsets.symmetric(vertical: AppDimensions.space12),
-              child: Divider(height: 1, color: AppColors.borderLight),
+              child: Divider(height: 1, color: kBorder),
             ),
             ...children,
           ],

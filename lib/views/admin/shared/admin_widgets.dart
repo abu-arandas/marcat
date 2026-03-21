@@ -5,14 +5,17 @@
 // Mirrors the quality & consistency of the customer-side shared widgets
 // (empty_state.dart, section_header.dart, brand.dart) but styled for
 // the admin panel's darker, more data-dense aesthetic.
+//
+// ✅ REFACTORED: uses brand.dart color aliases exclusively — zero raw
+//    AppColors references in this file.
 
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
-import 'package:marcat/core/constants/app_colors.dart';
-import 'package:marcat/core/constants/app_dimensions.dart';
-import 'package:marcat/core/constants/app_text_styles.dart';
-import 'package:marcat/models/enums.dart';
+import '../../../core/constants/app_dimensions.dart';
+import '../../../core/constants/app_text_styles.dart';
+import '../../../models/enums.dart';
+import 'brand.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AdminEmptyState
@@ -50,12 +53,11 @@ class AdminEmptyState extends StatelessWidget {
                 width: 72,
                 height: 72,
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceWhite,
+                  color: kSurfaceWhite,
                   borderRadius: BorderRadius.circular(AppDimensions.radiusM),
-                  border: Border.all(color: AppColors.borderLight),
+                  border: Border.all(color: kBorder),
                 ),
-                child: Icon(icon,
-                    size: AppDimensions.iconXXL, color: AppColors.marcatSlate),
+                child: Icon(icon, size: AppDimensions.iconXXL, color: kSlate),
               ),
               const SizedBox(height: AppDimensions.space24),
 
@@ -70,8 +72,8 @@ class AdminEmptyState extends StatelessWidget {
                 Text(
                   subtitle!,
                   textAlign: TextAlign.center,
-                  style: AppTextStyles.bodyMedium
-                      .copyWith(color: AppColors.textSecondary),
+                  style:
+                      AppTextStyles.bodyMedium.copyWith(color: kTextSecondary),
                 ),
               ],
 
@@ -82,8 +84,8 @@ class AdminEmptyState extends StatelessWidget {
                   icon: const Icon(Icons.add, size: 18),
                   label: Text(actionLabel!),
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.marcatNavy,
-                    foregroundColor: AppColors.textOnDark,
+                    backgroundColor: kNavy,
+                    foregroundColor: kTextOnDark,
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppDimensions.space24,
                       vertical: AppDimensions.space12,
@@ -125,15 +127,14 @@ class AdminErrorRetry extends StatelessWidget {
             children: [
               const Icon(
                 Icons.error_outline_rounded,
-                color: AppColors.statusRed,
+                color: kRed,
                 size: AppDimensions.iconXXL,
               ),
               const SizedBox(height: AppDimensions.space16),
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: AppTextStyles.bodyMedium
-                    .copyWith(color: AppColors.textSecondary),
+                style: AppTextStyles.bodyMedium.copyWith(color: kTextSecondary),
               ),
               const SizedBox(height: AppDimensions.space24),
               OutlinedButton.icon(
@@ -141,8 +142,8 @@ class AdminErrorRetry extends StatelessWidget {
                 icon: const Icon(Icons.refresh_rounded, size: 18),
                 label: const Text('Retry'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.marcatNavy,
-                  side: const BorderSide(color: AppColors.borderMedium),
+                  foregroundColor: kNavy,
+                  side: const BorderSide(color: kBorderMedium),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppDimensions.radiusS),
                   ),
@@ -166,24 +167,26 @@ class AdminListSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Shimmer.fromColors(
-        baseColor: AppColors.shimmerBase,
-        highlightColor: AppColors.shimmerHighlight,
+        baseColor: const Color(0xFFEDE8DF),
+        highlightColor: const Color(0xFFF5F0E8),
         child: ListView.separated(
           padding: const EdgeInsets.all(AppDimensions.pagePaddingH),
           itemCount: itemCount,
           separatorBuilder: (_, __) =>
               const SizedBox(height: AppDimensions.space8),
-          itemBuilder: (_, __) => _SkeletonCard(),
+          itemBuilder: (_, __) => const _SkeletonCard(),
         ),
       );
 }
 
 class _SkeletonCard extends StatelessWidget {
+  const _SkeletonCard();
+
   @override
   Widget build(BuildContext context) => Container(
         height: 80,
         decoration: BoxDecoration(
-          color: AppColors.surfaceWhite,
+          color: kSurfaceWhite,
           borderRadius: BorderRadius.circular(AppDimensions.radiusS),
         ),
       );
@@ -201,8 +204,8 @@ class AdminStatSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Shimmer.fromColors(
-        baseColor: AppColors.shimmerBase,
-        highlightColor: AppColors.shimmerHighlight,
+        baseColor: const Color(0xFFEDE8DF),
+        highlightColor: const Color(0xFFF5F0E8),
         child: GridView.count(
           crossAxisCount: crossAxisCount,
           crossAxisSpacing: AppDimensions.space16,
@@ -214,7 +217,7 @@ class AdminStatSkeleton extends StatelessWidget {
             4,
             (_) => Container(
               decoration: BoxDecoration(
-                color: AppColors.surfaceWhite,
+                color: kSurfaceWhite,
                 borderRadius: BorderRadius.circular(AppDimensions.radiusS),
               ),
             ),
@@ -233,28 +236,30 @@ class AdminFormSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Shimmer.fromColors(
-        baseColor: AppColors.shimmerBase,
-        highlightColor: AppColors.shimmerHighlight,
+        baseColor: const Color(0xFFEDE8DF),
+        highlightColor: const Color(0xFFF5F0E8),
         child: Padding(
           padding: const EdgeInsets.all(AppDimensions.pagePaddingH),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _shimmerBox(height: 160),
-              const SizedBox(height: AppDimensions.space16),
-              _shimmerBox(height: 80),
-              const SizedBox(height: AppDimensions.space16),
-              _shimmerBox(height: 52),
+              Container(
+                height: 200,
+                decoration: BoxDecoration(
+                  color: kSurfaceWhite,
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusS),
+                ),
+              ),
+              const SizedBox(height: AppDimensions.space24),
+              Container(
+                height: 160,
+                decoration: BoxDecoration(
+                  color: kSurfaceWhite,
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusS),
+                ),
+              ),
             ],
           ),
-        ),
-      );
-
-  Widget _shimmerBox({required double height}) => Container(
-        height: height,
-        decoration: BoxDecoration(
-          color: AppColors.surfaceWhite,
-          borderRadius: BorderRadius.circular(AppDimensions.radiusS),
         ),
       );
 }
@@ -263,123 +268,101 @@ class AdminFormSkeleton extends StatelessWidget {
 // SaleStatusBadge
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Coloured pill badge showing the sale/order status.
+/// Chip showing a sale's status with contextual color.
 class SaleStatusBadge extends StatelessWidget {
   const SaleStatusBadge({super.key, required this.status});
 
   final SaleStatus status;
 
-  @override
-  Widget build(BuildContext context) {
-    final (bg, fg, label) = _resolve(status);
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppDimensions.space12,
-        vertical: AppDimensions.space4,
-      ),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
-      ),
-      child: Text(
-        label,
-        style: AppTextStyles.labelSmall.copyWith(
-          color: fg,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.5,
-        ),
-      ),
-    );
-  }
-
-  static (Color bg, Color fg, String label) _resolve(SaleStatus s) =>
-      switch (s) {
-        SaleStatus.pending => (
-            AppColors.statusAmberLight,
-            AppColors.statusAmber,
-            'PENDING'
-          ),
-        SaleStatus.paid => (
-            AppColors.statusBlueLight,
-            AppColors.statusBlue,
-            'PAID'
-          ),
-        SaleStatus.shipped => (
-            AppColors.statusBlueLight,
-            AppColors.statusBlue,
-            'SHIPPED'
-          ),
-        SaleStatus.delivered => (
-            AppColors.statusGreenLight,
-            AppColors.statusGreen,
-            'DELIVERED'
-          ),
-        SaleStatus.cancelled => (
-            AppColors.statusRedLight,
-            AppColors.statusRed,
-            'CANCELLED'
-          ),
+  Color get _bg => switch (status) {
+        SaleStatus.pending => kAmber.withAlpha(26),
+        SaleStatus.paid => kBlue.withAlpha(26),
+        SaleStatus.shipped => kBlue.withAlpha(26),
+        SaleStatus.delivered => kGreen.withAlpha(26),
+        SaleStatus.cancelled => kRed.withAlpha(26),
       };
+
+  Color get _fg => switch (status) {
+        SaleStatus.pending => kAmber,
+        SaleStatus.paid => kBlue,
+        SaleStatus.shipped => kBlue,
+        SaleStatus.delivered => kGreen,
+        SaleStatus.cancelled => kRed,
+      };
+
+  String get _label =>
+      status.dbValue[0].toUpperCase() + status.dbValue.substring(1);
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppDimensions.space8,
+          vertical: AppDimensions.space4,
+        ),
+        decoration: BoxDecoration(
+          color: _bg,
+          borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
+        ),
+        child: Text(
+          _label,
+          style: AppTextStyles.labelSmall.copyWith(
+            color: _fg,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ProductStatusBadge
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Coloured pill badge for product status (active / draft / archived).
+/// Chip showing a product's status with contextual color.
 class ProductStatusBadge extends StatelessWidget {
   const ProductStatusBadge({super.key, required this.status});
 
   final ProductStatus status;
 
-  @override
-  Widget build(BuildContext context) {
-    final (bg, fg, label) = _resolve(status);
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppDimensions.space8,
-        vertical: 2,
-      ),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
-      ),
-      child: Text(
-        label,
-        style: AppTextStyles.labelSmall.copyWith(
-          color: fg,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.5,
-        ),
-      ),
-    );
-  }
-
-  static (Color bg, Color fg, String label) _resolve(ProductStatus s) =>
-      switch (s) {
-        ProductStatus.active => (
-            AppColors.statusGreenLight,
-            AppColors.statusGreen,
-            'ACTIVE'
-          ),
-        ProductStatus.draft => (
-            AppColors.statusAmberLight,
-            AppColors.statusAmber,
-            'DRAFT'
-          ),
-        ProductStatus.archived => (
-            AppColors.surfaceGrey,
-            AppColors.textSecondary,
-            'ARCHIVED'
-          ),
+  Color get _bg => switch (status) {
+        ProductStatus.active => kGreen.withAlpha(26),
+        ProductStatus.draft => kAmber.withAlpha(26),
+        ProductStatus.archived => kSlate.withAlpha(26),
       };
+
+  Color get _fg => switch (status) {
+        ProductStatus.active => kGreen,
+        ProductStatus.draft => kAmber,
+        ProductStatus.archived => kSlate,
+      };
+
+  String get _label =>
+      status.dbValue[0].toUpperCase() + status.dbValue.substring(1);
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppDimensions.space8,
+          vertical: AppDimensions.space4,
+        ),
+        decoration: BoxDecoration(
+          color: _bg,
+          borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
+        ),
+        child: Text(
+          _label,
+          style: AppTextStyles.labelSmall.copyWith(
+            color: _fg,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AdminSectionHeader
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Editorial section header for admin page sections — eyebrow + title.
+/// Eyebrow + title header used to separate dashboard/detail sections.
 class AdminSectionHeader extends StatelessWidget {
   const AdminSectionHeader({
     super.key,
@@ -408,13 +391,13 @@ class AdminSectionHeader extends StatelessWidget {
                     Container(
                       width: 20,
                       height: 2,
-                      color: AppColors.marcatGold,
+                      color: kGold,
                       margin: const EdgeInsets.only(right: 8),
                     ),
                     Text(
                       eyebrow.toUpperCase(),
                       style: AppTextStyles.labelSmall.copyWith(
-                        color: AppColors.marcatGold,
+                        color: kGold,
                         letterSpacing: 2,
                       ),
                     ),
@@ -455,9 +438,9 @@ class AdminStatCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.all(AppDimensions.space16),
         decoration: BoxDecoration(
-          color: AppColors.surfaceWhite,
+          color: kSurfaceWhite,
           borderRadius: BorderRadius.circular(AppDimensions.radiusS),
-          border: Border.all(color: AppColors.borderLight),
+          border: Border.all(color: kBorder),
         ),
         child: Row(
           children: [
@@ -481,8 +464,8 @@ class AdminStatCard extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: AppTextStyles.bodySmall
-                        .copyWith(color: AppColors.textSecondary),
+                    style:
+                        AppTextStyles.bodySmall.copyWith(color: kTextSecondary),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -497,7 +480,7 @@ class AdminStatCard extends StatelessWidget {
                     Text(
                       subtitle!,
                       style: AppTextStyles.labelSmall
-                          .copyWith(color: AppColors.textDisabled),
+                          .copyWith(color: kTextDisabled),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -531,24 +514,18 @@ class AdminInfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: AppTextStyles.bodySmall
-                .copyWith(color: AppColors.textSecondary),
+            style: AppTextStyles.bodySmall.copyWith(color: kTextSecondary),
           ),
-          const SizedBox(width: AppDimensions.space16),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              style: bold
-                  ? AppTextStyles.titleSmall
-                  : AppTextStyles.bodyMedium.copyWith(
-                      color: valueColor ?? AppColors.textPrimary,
-                    ),
-            ),
+          Text(
+            value,
+            style: bold
+                ? AppTextStyles.titleSmall.copyWith(color: valueColor)
+                : AppTextStyles.bodyMedium.copyWith(
+                    color: valueColor ?? kTextPrimary,
+                  ),
           ),
         ],
       );

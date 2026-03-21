@@ -8,16 +8,20 @@
 //
 // Categories and brands are loaded from [ProductController]; status is a
 // segmented picker; store assignment is handled separately in inventory.
+//
+// ✅ REFACTORED: replaced local _FormSection with shared AdminFormSection.
+// ✅ REFACTORED: all AppColors → brand.dart aliases.
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../controllers/product_controller.dart';
-import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../models/enums.dart';
+import '../shared/admin_form_section.dart';
 import '../shared/admin_widgets.dart';
+import '../shared/brand.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ProductFormScreen
@@ -107,8 +111,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           'Error',
           'Could not load product: $e',
           snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.statusRedLight,
-          colorText: AppColors.statusRed,
+          backgroundColor: kRedLight,
+          colorText: kRed,
         );
       }
     }
@@ -155,8 +159,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           'Error',
           e.toString(),
           snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.statusRedLight,
-          colorText: AppColors.statusRed,
+          backgroundColor: kRedLight,
+          colorText: kRed,
         );
       }
     } finally {
@@ -168,8 +172,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         'Success',
         message,
         snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.successGreenLight,
-        colorText: AppColors.statusGreen,
+        backgroundColor: kSuccessGreenLight,
+        colorText: kGreen,
       );
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -177,7 +181,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.surfaceGrey,
+      backgroundColor: kSurface,
       appBar: AppBar(
         title: Text(_isEditMode ? 'Edit Product' : 'New Product'),
         centerTitle: false,
@@ -199,7 +203,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // ── Basic information ──────────────────────────────────────
-                _FormSection(
+                // ✅ Uses shared AdminFormSection instead of local _FormSection
+                AdminFormSection(
                   title: 'Basic Information',
                   icon: Icons.info_outline_rounded,
                   children: [
@@ -217,9 +222,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                     ),
                     const SizedBox(height: AppDimensions.space16),
 
-                    // SKU + Price
+                    // SKU + Price row
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: TextFormField(
@@ -238,12 +242,13 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                           child: TextFormField(
                             controller: _priceCtrl,
                             decoration: const InputDecoration(
-                              labelText: 'Base Price (JOD) *',
+                              labelText: 'Price (JOD) *',
                               border: OutlineInputBorder(),
-                              prefixText: 'JOD ',
+                              prefixText: 'JD ',
                             ),
                             keyboardType: const TextInputType.numberWithOptions(
-                                decimal: true),
+                              decimal: true,
+                            ),
                             validator: (v) {
                               if (v == null || v.trim().isEmpty) {
                                 return 'Price is required.';
@@ -276,7 +281,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 const SizedBox(height: AppDimensions.space24),
 
                 // ── Classification ─────────────────────────────────────────
-                _FormSection(
+                AdminFormSection(
                   title: 'Classification',
                   icon: Icons.label_outline_rounded,
                   children: [
@@ -337,14 +342,14 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 const SizedBox(height: AppDimensions.space24),
 
                 // ── Status ────────────────────────────────────────────────
-                _FormSection(
+                AdminFormSection(
                   title: 'Visibility',
                   icon: Icons.visibility_outlined,
                   children: [
                     Text(
                       'Product Status',
                       style: AppTextStyles.bodySmall
-                          .copyWith(color: AppColors.textSecondary),
+                          .copyWith(color: kTextSecondary),
                     ),
                     const SizedBox(height: AppDimensions.space8),
                     _StatusSelector(
@@ -360,8 +365,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 FilledButton(
                   onPressed: _isSubmitting ? null : _submit,
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.marcatNavy,
-                    foregroundColor: AppColors.textOnDark,
+                    backgroundColor: kNavy,
+                    foregroundColor: kTextOnDark,
                     minimumSize: const Size.fromHeight(
                         AppDimensions.buttonHeightPrimary),
                     shape: RoundedRectangleBorder(
@@ -381,7 +386,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                       : Text(
                           _isEditMode ? 'Save Changes' : 'Create Product',
                           style: AppTextStyles.labelLarge
-                              .copyWith(color: AppColors.textOnDark),
+                              .copyWith(color: kTextOnDark),
                         ),
                 ),
 
@@ -393,52 +398,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       ),
     );
   }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// _FormSection
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Titled card container grouping related form fields.
-class _FormSection extends StatelessWidget {
-  const _FormSection({
-    required this.title,
-    required this.icon,
-    required this.children,
-  });
-
-  final String title;
-  final IconData icon;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(AppDimensions.space20),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceWhite,
-          borderRadius: BorderRadius.circular(AppDimensions.radiusS),
-          border: Border.all(color: AppColors.borderLight),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Section title row
-            Row(
-              children: [
-                Icon(icon,
-                    size: AppDimensions.iconS, color: AppColors.marcatGold),
-                const SizedBox(width: AppDimensions.space8),
-                Text(title, style: AppTextStyles.titleSmall),
-              ],
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: AppDimensions.space12),
-              child: Divider(height: 1, color: AppColors.borderLight),
-            ),
-            ...children,
-          ],
-        ),
-      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -478,7 +437,7 @@ class _StatusSelector extends StatelessWidget {
         onSelectionChanged: (Set<ProductStatus> s) => onChanged(s.first),
         style: ButtonStyle(
           side: WidgetStateProperty.all(
-              const BorderSide(color: AppColors.borderMedium)),
+              const BorderSide(color: kBorderMedium)),
         ),
       );
 }

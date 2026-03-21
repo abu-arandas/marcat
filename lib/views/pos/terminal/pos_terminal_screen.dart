@@ -9,7 +9,7 @@
 //  • Proper PosEmptyCart and PosEmptyProducts states.
 //  • Sign-out confirmation dialog.
 //  • Charge button opens a POS checkout confirmation dialog.
-//  • Consistent brand.dart color aliases.
+//  • Consistent brand.dart color aliases — zero raw AppColors.
 //  • All controllers disposed; mounted checks before every setState.
 
 import 'dart:async';
@@ -18,7 +18,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/extensions/currency_extensions.dart';
@@ -114,7 +113,6 @@ class _PosTerminalScreenState extends State<PosTerminalScreen> {
   // ── Size/Color selection ──────────────────────────────────────────────────
 
   Future<void> _showVariantSelector(ProductModel product) async {
-    // Fetch product details (colors, sizes, stock)
     List<ProductColorModel> colors = [];
     List<ProductSizeModel> sizes = [];
     List<InventoryModel> stockBySizeId = [];
@@ -129,8 +127,8 @@ class _PosTerminalScreenState extends State<PosTerminalScreen> {
           'Error',
           'Could not load product variants.',
           snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.statusRedLight,
-          colorText: AppColors.statusRed,
+          backgroundColor: kRedLight,
+          colorText: kRed,
         );
       }
       return;
@@ -147,7 +145,6 @@ class _PosTerminalScreenState extends State<PosTerminalScreen> {
       return;
     }
 
-    // Show bottom sheet for selection
     final result = await showModalBottomSheet<CartItemModel>(
       context: context,
       isScrollControlled: true,
@@ -286,7 +283,7 @@ class _CartPanel extends StatelessWidget {
             padding: const EdgeInsets.all(AppDimensions.space16),
             decoration: const BoxDecoration(
               border: Border(
-                bottom: BorderSide(color: AppColors.borderLight),
+                bottom: BorderSide(color: kBorder),
               ),
             ),
             child: Row(
@@ -320,7 +317,7 @@ class _CartPanel extends StatelessWidget {
                 itemCount: items.length,
                 separatorBuilder: (_, __) => const Divider(
                   height: 1,
-                  color: AppColors.borderLight,
+                  color: kBorder,
                 ),
                 itemBuilder: (_, i) {
                   final item = items[i];
@@ -366,9 +363,7 @@ class _CartPanel extends StatelessWidget {
             return Container(
               padding: const EdgeInsets.all(AppDimensions.space16),
               decoration: const BoxDecoration(
-                border: Border(
-                  top: BorderSide(color: AppColors.borderLight),
-                ),
+                border: Border(top: BorderSide(color: kBorder)),
               ),
               child: Column(
                 children: [
@@ -378,15 +373,10 @@ class _CartPanel extends StatelessWidget {
                   ),
                   const SizedBox(height: AppDimensions.space4),
                   PosTotalRow(
-                    label: 'Tax',
+                    label: 'Tax (16%)',
                     value: (subtotal * 0.16).toJOD(),
                   ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(
-                      vertical: AppDimensions.space8,
-                    ),
-                    child: Divider(height: 1, color: AppColors.borderLight),
-                  ),
+                  const Divider(height: AppDimensions.space16),
                   PosTotalRow(
                     label: 'Total',
                     value: (subtotal * 1.16).toJOD(),
@@ -404,8 +394,7 @@ class _CartPanel extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                           vertical: AppDimensions.space16,
                         ),
-                        disabledBackgroundColor:
-                            AppColors.textDisabled.withAlpha(77),
+                        disabledBackgroundColor: kTextDisabled.withAlpha(77),
                       ),
                       child: Text(
                         items.isEmpty
@@ -472,19 +461,6 @@ class _ProductCatalogue extends StatelessWidget {
                   ),
                   onChanged: onSearchChanged,
                 ),
-              ),
-              const SizedBox(width: AppDimensions.space16),
-              TextButton.icon(
-                icon: const Icon(Icons.person_add_alt_1),
-                label: const Text('Customer'),
-                onPressed: () {
-                  // TODO: open customer lookup bottom sheet
-                  Get.snackbar(
-                    'Customer',
-                    'Customer lookup coming soon.',
-                    snackPosition: SnackPosition.TOP,
-                  );
-                },
               ),
             ],
           ),
@@ -559,44 +535,43 @@ class _PosProductTile extends StatelessWidget {
                           imageUrl: product.primaryImageUrl!,
                           fit: BoxFit.cover,
                           placeholder: (_, __) =>
-                              const ColoredBox(color: AppColors.shimmerBase),
-                          errorWidget: (_, __, ___) => const Center(
-                            child: Icon(
-                              Icons.image_not_supported_outlined,
-                              color: kTextDisabled,
-                            ),
+                              const ColoredBox(color: kSurface),
+                          errorWidget: (_, __, ___) => const Icon(
+                            Icons.image_not_supported_outlined,
+                            color: kTextDisabled,
                           ),
                         )
                       : const Center(
                           child: Icon(
                             Icons.image_outlined,
-                            size: AppDimensions.iconXL,
                             color: kTextDisabled,
+                            size: AppDimensions.iconXL,
                           ),
                         ),
                 ),
               ),
 
-              // ── Info ────────────────────────────────────────────────────
+              // ── Product info ────────────────────────────────────────────
               Expanded(
-                flex: 2,
+                flex: 1,
                 child: Padding(
-                  padding: const EdgeInsets.all(AppDimensions.space8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppDimensions.space8,
+                    vertical: AppDimensions.space4,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
                         product.name,
-                        maxLines: 2,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.titleSmall,
+                        style: AppTextStyles.labelMedium,
                       ),
-                      const Spacer(),
                       Text(
                         product.basePrice.toJOD(),
-                        style: AppTextStyles.priceMedium.copyWith(
-                          color: kNavy,
-                        ),
+                        style: AppTextStyles.priceSmall,
                       ),
                     ],
                   ),
@@ -612,9 +587,6 @@ class _PosProductTile extends StatelessWidget {
 // _VariantSelectorSheet
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Bottom sheet for selecting size and color before adding to POS cart.
-///
-/// Returns a [CartItemModel] on confirmation, or null on dismiss.
 class _VariantSelectorSheet extends StatefulWidget {
   const _VariantSelectorSheet({
     required this.product,
@@ -637,33 +609,28 @@ class _VariantSelectorSheetState extends State<_VariantSelectorSheet> {
   int? _selectedSizeId;
   int _quantity = 1;
 
-  ProductColorModel get _selectedColor => widget.colors[_selectedColorIndex];
+  bool get _canAdd => _selectedSizeId != null;
 
-  bool _isSizeInStock(int sizeId) =>
-      (widget.stockBySizeId[sizeId].available) > 0;
-
-  bool get _canAdd =>
-      _selectedSizeId != null && _isSizeInStock(_selectedSizeId!);
+  bool _isSizeInStock(int sizeId) => widget.stockBySizeId.any(
+        (inv) => inv.productSizeId == sizeId && inv.available > 0,
+      );
 
   void _confirm() {
     if (!_canAdd) return;
-
-    final selectedSize = widget.sizes.firstWhere(
-      (s) => s.id == _selectedSizeId,
-    );
+    final color = widget.colors[_selectedColorIndex];
+    final size = widget.sizes.firstWhere((s) => s.id == _selectedSizeId);
 
     final item = CartItemModel(
       productId: widget.product.id,
+      productSizeId: size.id,
+      colorId: color.id,
       productName: widget.product.name,
-      productSizeId: selectedSize.id,
-      sizeLabel: selectedSize.label,
-      colorId: _selectedColor.id,
-      colorName: _selectedColor.name,
+      sizeLabel: size.label,
+      colorName: color.name,
       unitPrice: widget.product.basePrice,
       quantity: _quantity,
       primaryImageUrl: widget.product.primaryImageUrl,
     );
-
     Navigator.of(context).pop(item);
   }
 
@@ -677,18 +644,15 @@ class _VariantSelectorSheetState extends State<_VariantSelectorSheet> {
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Product name ──────────────────────────────────────────────
-            Text(
-              widget.product.name,
-              style: AppTextStyles.titleMedium,
-            ),
+            Text(widget.product.name, style: AppTextStyles.titleMedium),
+            const SizedBox(height: AppDimensions.space4),
             Text(
               widget.product.basePrice.toJOD(),
-              style: AppTextStyles.priceMedium.copyWith(color: kNavy),
+              style: AppTextStyles.priceSmall,
             ),
-            const SizedBox(height: AppDimensions.space20),
+            const SizedBox(height: AppDimensions.space16),
 
             // ── Color selector ────────────────────────────────────────────
             Text(
@@ -780,9 +744,8 @@ class _VariantSelectorSheetState extends State<_VariantSelectorSheet> {
               ),
               child: Text(
                 _canAdd
-                    ? 'Add to Cart · ${(widget.product.basePrice * _quantity).toJOD()}'
-                    : 'Select size & color',
-                style: AppTextStyles.buttonPrimary,
+                    ? 'Add to Cart (${(widget.product.basePrice * _quantity).toJOD()})'
+                    : 'Select a size',
               ),
             ),
             const SizedBox(height: AppDimensions.space24),

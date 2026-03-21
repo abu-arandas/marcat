@@ -2,7 +2,8 @@
 //
 // Admin settings panel — the last tab in AdminAppScaffold.
 //
-// ✅ REFACTORED: uses brand.dart color aliases.
+// ✅ REFACTORED: uses brand.dart color aliases exclusively.
+// ✅ REFACTORED: removed local kGreenLight hack — now in brand.dart.
 // ✅ REFACTORED: sign-out shows confirmation dialog.
 
 import 'package:flutter/material.dart';
@@ -475,6 +476,3 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
         ),
       );
 }
-
-// ── Green light alias for success snackbar ──────────────────────────────────
-const kGreenLight = Color(0xFFDCFCE7);

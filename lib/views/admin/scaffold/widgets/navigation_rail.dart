@@ -4,12 +4,14 @@
 //
 // Uses the brand navy background with gold accents, matching the dark
 // drawer treatment on the customer side.
+//
+// ✅ REFACTORED: uses brand.dart aliases — zero raw AppColors references.
 
 import 'package:flutter/material.dart';
 
-import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_text_styles.dart';
+import '../../shared/brand.dart';
 import '../app_scaffold.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -36,22 +38,22 @@ class AdminNavigationRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => NavigationRail(
-        backgroundColor: AppColors.marcatBlack,
+        backgroundColor: kBlack,
         // withAlpha(51) ≈ 20 % opacity — replaces deprecated withOpacity
-        indicatorColor: AppColors.marcatGold.withAlpha(51),
+        indicatorColor: kGold.withAlpha(51),
         unselectedIconTheme: const IconThemeData(
-          color: AppColors.textDisabled,
+          color: kTextDisabled,
           size: AppDimensions.iconL,
         ),
         selectedIconTheme: const IconThemeData(
-          color: AppColors.marcatGold,
+          color: kGold,
           size: AppDimensions.iconL,
         ),
         unselectedLabelTextStyle: AppTextStyles.labelSmall.copyWith(
-          color: AppColors.textDisabled,
+          color: kTextDisabled,
         ),
         selectedLabelTextStyle: AppTextStyles.labelSmall.copyWith(
-          color: AppColors.marcatGold,
+          color: kGold,
           fontWeight: FontWeight.w700,
         ),
         extended: extended,
@@ -93,7 +95,7 @@ class _RailLeading extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: AppColors.marcatGold,
+                  color: kGold,
                   borderRadius:
                       BorderRadius.circular(AppDimensions.radiusS),
                 ),
@@ -104,7 +106,7 @@ class _RailLeading extends StatelessWidget {
                       fontFamily: 'PlayfairDisplay',
                       fontWeight: FontWeight.w700,
                       fontSize: 20,
-                      color: AppColors.marcatBlack,
+                      color: kBlack,
                     ),
                   ),
                 ),
@@ -117,14 +119,14 @@ class _RailLeading extends StatelessWidget {
                   Text(
                     'MARCAT',
                     style: AppTextStyles.labelLarge.copyWith(
-                      color: AppColors.marcatCream,
+                      color: kCream,
                       letterSpacing: 3,
                     ),
                   ),
                   Text(
                     'Admin Panel',
                     style: AppTextStyles.labelSmall.copyWith(
-                      color: AppColors.textDisabled,
+                      color: kTextDisabled,
                     ),
                   ),
                 ],
@@ -140,7 +142,7 @@ class _RailLeading extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: AppColors.marcatGold,
+              color: kGold,
               borderRadius: BorderRadius.circular(AppDimensions.radiusS),
             ),
             child: const Center(
@@ -150,7 +152,7 @@ class _RailLeading extends StatelessWidget {
                   fontFamily: 'PlayfairDisplay',
                   fontWeight: FontWeight.w700,
                   fontSize: 20,
-                  color: AppColors.marcatBlack,
+                  color: kBlack,
                 ),
               ),
             ),

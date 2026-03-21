@@ -4,10 +4,12 @@
 //
 // Uses the brand navy/black background with gold selected indicators,
 // matching the dark aesthetic of the desktop NavigationRail.
+//
+// ✅ REFACTORED: uses brand.dart aliases — zero raw AppColors references.
 
 import 'package:flutter/material.dart';
 
-import '../../../../core/constants/app_colors.dart';
+import '../../shared/brand.dart';
 import '../app_scaffold.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -31,16 +33,15 @@ class AdminBottomNav extends StatelessWidget {
   Widget build(BuildContext context) => NavigationBar(
         selectedIndex: currentIndex,
         onDestinationSelected: onDestinationSelected,
-        backgroundColor: AppColors.marcatBlack,
+        backgroundColor: kBlack,
         // withAlpha(51) ≈ 20 % opacity
-        indicatorColor: AppColors.marcatGold.withAlpha(51),
+        indicatorColor: kGold.withAlpha(51),
         labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
         destinations: destinations
             .map(
               (d) => NavigationDestination(
-                icon: Icon(d.icon, color: AppColors.textDisabled),
-                selectedIcon:
-                    Icon(d.selectedIcon, color: AppColors.marcatGold),
+                icon: Icon(d.icon, color: kTextDisabled),
+                selectedIcon: Icon(d.selectedIcon, color: kGold),
                 label: d.label,
               ),
             )

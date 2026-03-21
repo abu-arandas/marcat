@@ -2,13 +2,16 @@
 //
 // Shared UI primitives for POS screens — mirrors the pattern of
 // customer/shared/empty_state.dart and admin/shared/admin_widgets.dart.
+//
+// ✅ REFACTORED: uses brand.dart color aliases exclusively — zero raw
+//    AppColors references in this file.
 
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
-import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_text_styles.dart';
+import 'brand.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PosEmptyCart
@@ -26,7 +29,7 @@ class PosEmptyCart extends StatelessWidget {
             Icon(
               Icons.shopping_bag_outlined,
               size: AppDimensions.iconXXL,
-              color: AppColors.textDisabled,
+              color: kTextDisabled,
             ),
             SizedBox(height: AppDimensions.space12),
             Text(
@@ -35,7 +38,7 @@ class PosEmptyCart extends StatelessWidget {
                 fontFamily: 'IBMPlexSansArabic',
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
-                color: AppColors.textDisabled,
+                color: kTextDisabled,
               ),
             ),
             SizedBox(height: AppDimensions.space4),
@@ -44,7 +47,7 @@ class PosEmptyCart extends StatelessWidget {
               style: TextStyle(
                 fontFamily: 'IBMPlexSansArabic',
                 fontSize: 13,
-                color: AppColors.textDisabled,
+                color: kTextDisabled,
               ),
             ),
           ],
@@ -70,13 +73,13 @@ class PosEmptyProducts extends StatelessWidget {
             const Icon(
               Icons.inventory_2_outlined,
               size: AppDimensions.iconXXL,
-              color: AppColors.textDisabled,
+              color: kTextDisabled,
             ),
             const SizedBox(height: AppDimensions.space12),
             Text(
               message ?? 'No products found.',
               style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
+                color: kTextSecondary,
               ),
             ),
           ],
@@ -96,8 +99,8 @@ class PosProductGridSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Shimmer.fromColors(
-        baseColor: AppColors.shimmerBase,
-        highlightColor: AppColors.shimmerHighlight,
+        baseColor: const Color(0xFFEDE8DF),
+        highlightColor: const Color(0xFFF5F0E8),
         child: GridView.builder(
           padding: const EdgeInsets.all(AppDimensions.space16),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -172,14 +175,14 @@ class PosCartItemTile extends StatelessWidget {
                   Text(
                     '$size · $color',
                     style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
+                      color: kTextSecondary,
                     ),
                   ),
                   const SizedBox(height: AppDimensions.space4),
                   Text(
                     '$unitPrice × $quantity',
                     style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
+                      color: kTextSecondary,
                     ),
                   ),
                 ],
@@ -221,7 +224,7 @@ class PosCartItemTile extends StatelessWidget {
                 icon: const Icon(
                   Icons.close,
                   size: AppDimensions.iconS,
-                  color: AppColors.textDisabled,
+                  color: kTextDisabled,
                 ),
                 onPressed: onRemove,
                 splashRadius: 16,
@@ -250,11 +253,11 @@ class _QtyButton extends StatelessWidget {
           width: 28,
           height: 28,
           decoration: BoxDecoration(
-            border: Border.all(color: AppColors.borderLight),
+            border: Border.all(color: kBorder),
             borderRadius:
                 BorderRadius.circular(AppDimensions.radiusXS),
           ),
-          child: Icon(icon, size: 14, color: AppColors.textPrimary),
+          child: Icon(icon, size: 14, color: kTextPrimary),
         ),
       );
 }

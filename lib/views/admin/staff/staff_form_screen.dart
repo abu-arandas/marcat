@@ -3,13 +3,12 @@
 // Create a new staff member via the `create-staff` Supabase Edge Function.
 //
 // ✅ REFACTORED: uses AdminFormSection (deduplicated from _FormSection).
-// ✅ REFACTORED: uses brand.dart color aliases.
+// ✅ REFACTORED: uses brand.dart color aliases exclusively — zero raw AppColors.
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../controllers/admin_controller.dart';
-import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../models/enums.dart';
@@ -41,6 +40,8 @@ class _StaffFormScreenState extends State<StaffFormScreen> {
 
   AdminController get _adminCtrl => Get.find<AdminController>();
 
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
+
   @override
   void initState() {
     super.initState();
@@ -56,6 +57,8 @@ class _StaffFormScreenState extends State<StaffFormScreen> {
     super.dispose();
   }
 
+  // ── Submit ────────────────────────────────────────────────────────────────
+
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (_selectedStoreId == null) {
@@ -63,7 +66,7 @@ class _StaffFormScreenState extends State<StaffFormScreen> {
         'Missing Store',
         'Please select a store.',
         snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.statusAmberLight,
+        backgroundColor: kAmberLight,
         colorText: kAmber,
       );
       return;
@@ -84,7 +87,7 @@ class _StaffFormScreenState extends State<StaffFormScreen> {
           'Success',
           'Staff member created successfully.',
           snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.successGreenLight,
+          backgroundColor: kSuccessGreenLight,
           colorText: kGreen,
         );
         Get.back();
@@ -95,7 +98,7 @@ class _StaffFormScreenState extends State<StaffFormScreen> {
           'Error',
           e.toString(),
           snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.statusRedLight,
+          backgroundColor: kRedLight,
           colorText: kRed,
         );
       }
@@ -103,6 +106,8 @@ class _StaffFormScreenState extends State<StaffFormScreen> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -123,7 +128,6 @@ class _StaffFormScreenState extends State<StaffFormScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // ── Personal info ─────────────────────────────────────
-                  // ✅ Uses shared AdminFormSection instead of _FormSection
                   AdminFormSection(
                     title: 'Personal Information',
                     icon: Icons.person_outline_rounded,
@@ -269,9 +273,8 @@ class _StaffFormScreenState extends State<StaffFormScreen> {
                               .toList(),
                           onChanged: (v) =>
                               setState(() => _selectedStoreId = v),
-                          validator: (_) => _selectedStoreId == null
-                              ? 'Please select a store.'
-                              : null,
+                          validator: (v) =>
+                              v == null ? 'Please select a store.' : null,
                         );
                       }),
                     ],
@@ -279,7 +282,7 @@ class _StaffFormScreenState extends State<StaffFormScreen> {
 
                   const SizedBox(height: AppDimensions.space32),
 
-                  // ── Submit ─────────────────────────────────────────────
+                  // ── Submit ────────────────────────────────────────────
                   FilledButton(
                     onPressed: _isLoading ? null : _submit,
                     style: FilledButton.styleFrom(
@@ -467,7 +470,7 @@ class _StoreEmptyWarning extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.all(AppDimensions.space12),
         decoration: BoxDecoration(
-          color: AppColors.statusAmberLight,
+          color: kAmberLight,
           borderRadius: BorderRadius.circular(AppDimensions.radiusS),
         ),
         child: Row(
