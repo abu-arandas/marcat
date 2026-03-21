@@ -1,14 +1,26 @@
-// lib/presentation/pos/auth/pos_auth_screen.dart
+// lib/views/pos/auth/pos_auth_screen.dart
+//
+// POS PIN authentication screen — staff enter their 4-digit PIN to
+// begin a shift on the point-of-sale terminal.
+//
+// ✅ REFACTORED: uses brand.dart aliases, consistent with admin/customer.
+// ✅ REFACTORED: fixed file path in header comment (was presentation/).
+// ✅ REFACTORED: clear PIN button uses brand colors.
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../../core/constants/app_colors.dart';
+
+import '../../../controllers/admin_controller.dart';
+import '../../../controllers/auth_controller.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/utils/snackbar_utils.dart';
-import 'package:marcat/controllers/admin_controller.dart';
-import 'package:marcat/controllers/auth_controller.dart';
-import 'package:marcat/core/router/app_router.dart';
+import '../shared/brand.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PosAuthScreen
+// ─────────────────────────────────────────────────────────────────────────────
 
 class PosAuthScreen extends StatefulWidget {
   const PosAuthScreen({super.key});
@@ -19,14 +31,14 @@ class PosAuthScreen extends StatefulWidget {
 
 class _PosAuthScreenState extends State<PosAuthScreen> {
   String _pin = '';
-  final int _pinLength = 4; // Simplified PIN length for demo
+  final int _pinLength = 4;
+
+  // ── PIN entry ─────────────────────────────────────────────────────────────
 
   void _onKeyPress(String digit) {
     if (_pin.length < _pinLength) {
       setState(() => _pin += digit);
-      if (_pin.length == _pinLength) {
-        _verifyPin();
-      }
+      if (_pin.length == _pinLength) _verifyPin();
     }
   }
 
@@ -36,13 +48,19 @@ class _PosAuthScreenState extends State<PosAuthScreen> {
     }
   }
 
+  void _onClear() => setState(() => _pin = '');
+
+  // ── PIN verification ──────────────────────────────────────────────────────
+
   Future<void> _verifyPin() async {
-    final authController = Get.find<AuthController>();
-    final authState = authController.state.value;
+    final authCtrl = Get.find<AuthController>();
+    final authState = authCtrl.state.value;
 
     if (!authState.isAuthenticated || authState.user == null) {
-      SnackbarUtils.showError(context, 'No active terminal session');
-      setState(() => _pin = '');
+      if (mounted) {
+        SnackbarUtils.showError(context, 'No active terminal session');
+        _onClear();
+      }
       return;
     }
 
@@ -53,60 +71,67 @@ class _PosAuthScreenState extends State<PosAuthScreen> {
         final isValid = await Get.find<AdminController>()
             .verifyPosPin(staffId: authState.user!.id, pin: _pin);
 
+        if (!mounted) return;
+
         if (isValid) {
-          if (mounted) {
-            Get.toNamed(AppRoutes.posTerminal); // Was: '/app/pos/home'
-          }
+          Get.toNamed(AppRoutes.posTerminal);
         } else {
-          if (!mounted) return;
           SnackbarUtils.showError(context, 'Invalid PIN');
-          setState(() => _pin = '');
+          _onClear();
         }
       } catch (e) {
         if (!mounted) return;
         SnackbarUtils.showError(context, e.toString());
-        setState(() => _pin = '');
+        _onClear();
       }
     } else {
-      SnackbarUtils.showError(context, 'Unauthorized for POS access');
-      setState(() => _pin = '');
+      if (mounted) {
+        SnackbarUtils.showError(context, 'Unauthorized for POS access');
+        _onClear();
+      }
     }
   }
 
+  // ── Build ─────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
-    final authController = Get.find<AuthController>();
+    final authCtrl = Get.find<AuthController>();
 
     return Scaffold(
-      backgroundColor: AppColors.marcatBlack,
+      backgroundColor: kBlack,
       body: Center(
         child: Container(
           width: 400,
           padding: const EdgeInsets.all(AppDimensions.space48),
           decoration: BoxDecoration(
-            color: AppColors.surfaceWhite,
+            color: kSurfaceWhite,
             borderRadius: BorderRadius.circular(AppDimensions.radiusL),
           ),
           child: Obx(() {
-            final user = authController.state.value.user;
+            final user = authCtrl.state.value.user;
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // ── Header ────────────────────────────────────────────────
                 Text(
                   'MARCAT POS',
-                  style: AppTextStyles.displayMedium
-                      .copyWith(color: AppColors.marcatBlack, letterSpacing: 4),
+                  style: AppTextStyles.displayMedium.copyWith(
+                    color: kBlack,
+                    letterSpacing: 4,
+                  ),
                 ),
                 const SizedBox(height: AppDimensions.space8),
                 Text(
                   'Enter PIN to start shift\n(${user?.firstName ?? "Staff"})',
                   textAlign: TextAlign.center,
-                  style: AppTextStyles.bodyMedium
-                      .copyWith(color: AppColors.textSecondary),
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: kTextSecondary,
+                  ),
                 ),
                 const SizedBox(height: AppDimensions.space32),
 
-                // PIN Dots
+                // ── PIN Dots ──────────────────────────────────────────────
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: List.generate(_pinLength, (index) {
@@ -116,17 +141,19 @@ class _PosAuthScreenState extends State<PosAuthScreen> {
                       width: 20,
                       height: 20,
                       decoration: BoxDecoration(
-                        color: isActive
-                            ? AppColors.marcatBlack
-                            : AppColors.borderMedium,
+                        color: isActive ? kBlack : Colors.transparent,
                         shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isActive ? kBlack : kBorderMedium,
+                          width: 2,
+                        ),
                       ),
                     );
                   }),
                 ),
                 const SizedBox(height: AppDimensions.space48),
 
-                // Numpad
+                // ── Numpad ────────────────────────────────────────────────
                 GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
@@ -136,19 +163,22 @@ class _PosAuthScreenState extends State<PosAuthScreen> {
                     crossAxisSpacing: 16,
                     mainAxisSpacing: 16,
                   ),
-                  itemCount: 12, // 1-9, C, 0, Del
+                  itemCount: 12,
                   itemBuilder: (context, index) {
                     if (index == 9) {
-                      return _NumpadKey(
-                          label: 'C', onTap: () => setState(() => _pin = ''));
+                      return _NumpadKey(label: 'C', onTap: _onClear);
                     }
                     if (index == 11) {
                       return _NumpadKey(
-                          icon: Icons.backspace_outlined, onTap: _onDelete);
+                        icon: Icons.backspace_outlined,
+                        onTap: _onDelete,
+                      );
                     }
                     final digit = index == 10 ? '0' : '${index + 1}';
                     return _NumpadKey(
-                        label: digit, onTap: () => _onKeyPress(digit));
+                      label: digit,
+                      onTap: () => _onKeyPress(digit),
+                    );
                   },
                 ),
               ],
@@ -160,6 +190,10 @@ class _PosAuthScreenState extends State<PosAuthScreen> {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// _NumpadKey
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _NumpadKey extends StatelessWidget {
   const _NumpadKey({this.label, this.icon, required this.onTap});
 
@@ -168,21 +202,19 @@ class _NumpadKey extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppDimensions.radiusS),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surfaceGrey,
-          borderRadius: BorderRadius.circular(AppDimensions.radiusS),
+  Widget build(BuildContext context) => InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusS),
+        child: Container(
+          decoration: BoxDecoration(
+            color: kSurface,
+            borderRadius: BorderRadius.circular(AppDimensions.radiusS),
+          ),
+          child: Center(
+            child: label != null
+                ? Text(label!, style: AppTextStyles.headlineLarge)
+                : Icon(icon, size: 28, color: kBlack),
+          ),
         ),
-        child: Center(
-          child: label != null
-              ? Text(label!, style: AppTextStyles.headlineLarge)
-              : Icon(icon, size: 28, color: AppColors.marcatBlack),
-        ),
-      ),
-    );
-  }
+      );
 }

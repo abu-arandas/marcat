@@ -1,4 +1,4 @@
-// lib/data/models/cart_item_model.dart
+// lib/models/cart_item_model.dart
 //
 // CartItemModel is a CLIENT-SIDE model only — it has no corresponding
 // database table.  It represents a line item in the local cart before

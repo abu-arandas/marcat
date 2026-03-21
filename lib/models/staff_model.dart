@@ -1,4 +1,4 @@
-// lib/data/models/staff_model.dart
+// lib/models/staff_model.dart
 //
 // Mirrors public.staff  (PK is also FK → public.profiles(id))
 // ┌───────────────────┬─────────────────────────────┬──────────┐

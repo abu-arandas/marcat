@@ -10,12 +10,19 @@ enum UserRole {
 }
 
 extension UserRoleX on UserRole {
-  String get dbValue => name; // 'admin' | 'store_manager' | …
+  /// Returns the snake_case string stored in the database.
+  String get dbValue => switch (this) {
+        UserRole.storeManager => 'store_manager',
+        _ => name,
+      };
 
-  static UserRole fromDb(String? v) => UserRole.values.firstWhere(
-        (e) => e.name == v,
-        orElse: () => UserRole.customer,
-      );
+  static UserRole fromDb(String? v) => switch (v) {
+        'admin' => UserRole.admin,
+        'store_manager' => UserRole.storeManager,
+        'salesperson' => UserRole.salesperson,
+        'driver' => UserRole.driver,
+        _ => UserRole.customer,
+      };
 }
 
 // ─── public.loyalty_tier ─────────────────────────────────────────────────────
@@ -88,12 +95,18 @@ enum DeliveryStatus {
 }
 
 extension DeliveryStatusX on DeliveryStatus {
-  String get dbValue => name; // 'pending' | 'out_for_delivery' | …
+  /// Returns the snake_case string stored in the database.
+  String get dbValue => switch (this) {
+        DeliveryStatus.outForDelivery => 'out_for_delivery',
+        _ => name,
+      };
 
-  static DeliveryStatus fromDb(String? v) => DeliveryStatus.values.firstWhere(
-        (e) => e.name == v,
-        orElse: () => DeliveryStatus.pending,
-      );
+  static DeliveryStatus fromDb(String? v) => switch (v) {
+        'out_for_delivery' => DeliveryStatus.outForDelivery,
+        'delivered' => DeliveryStatus.delivered,
+        'failed' => DeliveryStatus.failed,
+        _ => DeliveryStatus.pending,
+      };
 }
 
 // ─── public.return_status ────────────────────────────────────────────────────

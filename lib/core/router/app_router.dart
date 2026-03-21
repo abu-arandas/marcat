@@ -23,7 +23,8 @@ import 'package:marcat/views/customer/wishlist_page.dart';
 import 'package:marcat/views/customer/order_detail_page.dart';
 
 // ── Admin screens ─────────────────────────────────────────────────────────────
-import 'package:marcat/views/admin/app_scaffold.dart';
+// ✅ FIX: Updated import path — scaffold now lives in scaffold/ subdirectory
+import 'package:marcat/views/admin/scaffold/app_scaffold.dart';
 import 'package:marcat/views/admin/products/product_form_screen.dart';
 import 'package:marcat/views/admin/orders/order_detail_screen.dart';
 import 'package:marcat/views/admin/staff/staff_form_screen.dart';
@@ -162,16 +163,7 @@ class AppPages {
       middlewares: [AuthGuard()],
     ),
 
-    GetPage(
-      name: AppRoutes.sizeGuide,
-      page: () => const _ComingSoonScreen(title: 'Size Guide'),
-    ),
-    GetPage(
-      name: AppRoutes.returns,
-      page: () => const _ComingSoonScreen(title: 'Returns & Exchanges'),
-    ),
-
-    // ── Admin app ─────────────────────────────────────────────────────────────
+    // ── Admin ────────────────────────────────────────────────────────────────
     GetPage(
       name: AppRoutes.adminDashboard,
       page: () => const AdminAppScaffold(),
@@ -185,22 +177,22 @@ class AppPages {
     GetPage(
       name: AppRoutes.adminProductsEdit,
       page: () {
-        final productId = int.tryParse(Get.parameters['id'] ?? '');
-        if (productId == null) {
+        final id = int.tryParse(Get.parameters['id'] ?? '');
+        if (id == null) {
           return const _InvalidRouteScreen(message: 'Invalid product ID.');
         }
-        return ProductFormScreen(productId: productId);
+        return ProductFormScreen(productId: id);
       },
       middlewares: [AuthGuard()],
     ),
     GetPage(
       name: AppRoutes.adminOrders,
       page: () {
-        final orderId = int.tryParse(Get.parameters['id'] ?? '');
-        if (orderId == null) {
+        final id = int.tryParse(Get.parameters['id'] ?? '');
+        if (id == null) {
           return const _InvalidRouteScreen(message: 'Invalid order ID.');
         }
-        return AdminOrderDetailScreen(orderId: orderId);
+        return AdminOrderDetailScreen(orderId: id);
       },
       middlewares: [AuthGuard()],
     ),
@@ -210,7 +202,7 @@ class AppPages {
       middlewares: [AuthGuard()],
     ),
 
-    // ── POS app ───────────────────────────────────────────────────────────────
+    // ── POS ──────────────────────────────────────────────────────────────────
     GetPage(
       name: AppRoutes.posAuth,
       page: () => const PosAuthScreen(),
@@ -226,7 +218,6 @@ class AppPages {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // _InvalidRouteScreen
-// Shown when a route parameter is missing or non-parseable.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _InvalidRouteScreen extends StatelessWidget {
@@ -236,51 +227,7 @@ class _InvalidRouteScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(),
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.link_off, size: 48),
-              const SizedBox(height: 16),
-              Text(message, textAlign: TextAlign.center),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () => Get.back(),
-                child: const Text('Go Back'),
-              ),
-            ],
-          ),
-        ),
-      );
-}
-
-class _ComingSoonScreen extends StatelessWidget {
-  const _ComingSoonScreen({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(title)),
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.construction_outlined, size: 48),
-              const SizedBox(height: 16),
-              Text(
-                '$title coming soon.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 24),
-              OutlinedButton(
-                onPressed: () => Get.back(),
-                child: const Text('Go Back'),
-              ),
-            ],
-          ),
-        ),
+        appBar: AppBar(title: const Text('Invalid Route')),
+        body: Center(child: Text(message)),
       );
 }

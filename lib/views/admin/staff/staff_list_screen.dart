@@ -1,28 +1,26 @@
 // lib/views/admin/staff/staff_list_screen.dart
 //
 // Paginated list of all staff members with role chips and active/inactive
-// status indicators. Supports pull-to-refresh.
+// status indicators.
+//
+// ✅ REFACTORED: uses brand.dart color aliases.
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../controllers/admin_controller.dart';
-import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/router/app_router.dart';
 import '../../../models/enums.dart';
 import '../../../models/staff_model.dart';
 import '../shared/admin_widgets.dart';
+import '../shared/brand.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AdminStaffListScreen
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// All staff members in a searchable card list.
-///
-/// Displays each member's initials avatar, name, role chip, assigned store,
-/// and active/inactive status dot.
 class AdminStaffListScreen extends StatelessWidget {
   const AdminStaffListScreen({super.key});
 
@@ -31,7 +29,7 @@ class AdminStaffListScreen extends StatelessWidget {
     final ctrl = Get.find<AdminController>();
 
     return Scaffold(
-      backgroundColor: AppColors.surfaceGrey,
+      backgroundColor: kSurface,
       appBar: AppBar(
         title: const Text('Staff'),
         centerTitle: false,
@@ -45,14 +43,12 @@ class AdminStaffListScreen extends StatelessWidget {
       ),
       body: RefreshIndicator(
         onRefresh: () => ctrl.fetchStaff(),
-        color: AppColors.marcatGold,
+        color: kGold,
         child: Obx(() {
-          // ── Loading ─────────────────────────────────────────────────────
           if (ctrl.isLoadingStaff.value && ctrl.staffList.isEmpty) {
             return const AdminListSkeleton();
           }
 
-          // ── Empty ───────────────────────────────────────────────────────
           if (ctrl.staffList.isEmpty) {
             return AdminEmptyState(
               icon: Icons.group_outlined,
@@ -63,18 +59,11 @@ class AdminStaffListScreen extends StatelessWidget {
             );
           }
 
-          // ── List ────────────────────────────────────────────────────────
           return ListView.separated(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(
-              AppDimensions.pagePaddingH,
-              AppDimensions.pagePaddingH,
-              AppDimensions.pagePaddingH,
-              AppDimensions.space64,
-            ),
+            padding: const EdgeInsets.all(AppDimensions.pagePaddingH),
             itemCount: ctrl.staffList.length,
             separatorBuilder: (_, __) =>
-                const SizedBox(height: AppDimensions.space8),
+                const SizedBox(height: AppDimensions.space12),
             itemBuilder: (_, i) => _StaffCard(staff: ctrl.staffList[i]),
           );
         }),
@@ -92,157 +81,99 @@ class _StaffCard extends StatelessWidget {
 
   final StaffModel staff;
 
+  String get _initials {
+    final f =
+        staff.firstName.isNotEmpty ? staff.firstName[0].toUpperCase() : '';
+    final l = (staff.lastName ?? '').isNotEmpty
+        ? (staff.lastName ?? '')[0].toUpperCase()
+        : '';
+    return '$f$l'.isNotEmpty ? '$f$l' : '?';
+  }
+
+  String get _roleLabel => switch (staff.role) {
+        UserRole.salesperson => 'Salesperson',
+        UserRole.storeManager => 'Store Manager',
+        UserRole.driver => 'Driver',
+        UserRole.admin => 'Admin',
+        _ => staff.role?.dbValue ?? 'Unknown',
+      };
+
+  Color get _roleColor => switch (staff.role) {
+        UserRole.admin => kRed,
+        UserRole.storeManager => kBlue,
+        UserRole.salesperson => kGold,
+        UserRole.driver => kAmber,
+        _ => kSlate,
+      };
+
   @override
   Widget build(BuildContext context) => Card(
         margin: EdgeInsets.zero,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(AppDimensions.radiusS),
-          onTap: () {
-            // Navigate to staff detail / edit screen when implemented.
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(AppDimensions.space16),
-            child: Row(
-              children: [
-                // ── Avatar ───────────────────────────────────────────────
-                _StaffAvatar(staff: staff),
-                const SizedBox(width: AppDimensions.space12),
+        child: Padding(
+          padding: const EdgeInsets.all(AppDimensions.space16),
+          child: Row(
+            children: [
+              // ── Avatar ──────────────────────────────────────────────────
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: kGold.withAlpha(38),
+                child: Text(
+                  _initials,
+                  style: AppTextStyles.titleSmall.copyWith(color: kNavy),
+                ),
+              ),
+              const SizedBox(width: AppDimensions.space12),
 
-                // ── Info ─────────────────────────────────────────────────
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${staff.firstName} ${staff.lastName ?? ''}',
-                        style: AppTextStyles.titleSmall,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: AppDimensions.space4),
-                      Row(
-                        children: [
-                          _RoleChip(role: staff.role),
-                          if (staff.assignedStoreId != null) ...[
-                            const SizedBox(width: AppDimensions.space8),
-                            Text(
-                              'Store #${staff.assignedStoreId}',
-                              style: AppTextStyles.bodySmall
-                                  .copyWith(color: AppColors.textSecondary),
+              // ── Name + role ─────────────────────────────────────────────
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${staff.firstName} ${staff.lastName}',
+                      style: AppTextStyles.titleSmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppDimensions.space8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _roleColor.withAlpha(26),
+                            borderRadius: BorderRadius.circular(
+                              AppDimensions.radiusPill,
                             ),
-                          ],
-                        ],
-                      ),
-                    ],
-                  ),
+                          ),
+                          child: Text(
+                            _roleLabel,
+                            style: AppTextStyles.labelSmall.copyWith(
+                              color: _roleColor,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
+              ),
 
-                // ── Active indicator ─────────────────────────────────────
-                _ActiveDot(isActive: staff.isActive),
-
-                const SizedBox(width: AppDimensions.space4),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: AppColors.textDisabled,
-                  size: AppDimensions.iconM,
+              // ── Active indicator ────────────────────────────────────────
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: staff.isActive ? kGreen : kTextDisabled,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ),
-      );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// _StaffAvatar
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _StaffAvatar extends StatelessWidget {
-  const _StaffAvatar({required this.staff});
-
-  final StaffModel staff;
-
-  String get _initials {
-    final first =
-        staff.firstName.isNotEmpty ? staff.firstName[0].toUpperCase() : '';
-    final last = (staff.lastName?.isNotEmpty ?? false)
-        ? staff.lastName![0].toUpperCase()
-        : '';
-    final combined = '$first$last';
-    return combined.isNotEmpty ? combined : 'ST';
-  }
-
-  @override
-  Widget build(BuildContext context) => CircleAvatar(
-        radius: 24,
-        backgroundColor: AppColors.marcatNavy,
-        child: Text(
-          _initials,
-          style: AppTextStyles.titleSmall.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// _RoleChip
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _RoleChip extends StatelessWidget {
-  const _RoleChip({this.role});
-
-  final UserRole? role;
-
-  @override
-  Widget build(BuildContext context) {
-    final label = _label(role);
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppDimensions.space8,
-        vertical: 2,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.loyaltyBackground,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
-        border: Border.all(color: AppColors.borderLight),
-      ),
-      child: Text(
-        label,
-        style: AppTextStyles.labelSmall.copyWith(
-          color: AppColors.marcatNavy,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  static String _label(UserRole? role) => switch (role) {
-        UserRole.admin => 'Admin',
-        UserRole.storeManager => 'Manager',
-        UserRole.salesperson => 'Salesperson',
-        UserRole.driver => 'Driver',
-        _ => 'Staff',
-      };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// _ActiveDot
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ActiveDot extends StatelessWidget {
-  const _ActiveDot({required this.isActive});
-
-  final bool isActive;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        width: 8,
-        height: 8,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: isActive ? AppColors.statusGreen : AppColors.textDisabled,
         ),
       );
 }

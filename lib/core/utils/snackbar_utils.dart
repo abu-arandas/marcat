@@ -45,12 +45,7 @@ class SnackbarUtils {
   }
 
   static void showOffline(BuildContext context) {
-    showWarning(
-      context,
-      context.findAncestorStateOfType<ScaffoldMessengerState>() != null
-          ? 'No internet connection'
-          : 'No internet connection',
-    );
+    showWarning(context, 'No internet connection');
   }
 
   static void _show(

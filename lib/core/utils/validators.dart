@@ -23,9 +23,8 @@ class Validators {
   }
 
   static String? phone(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Phone number is required';
-    }
+    // Phone is optional — allow empty
+    if (value == null || value.trim().isEmpty) return null;
     final phoneRegex = RegExp(r'^\+?[0-9]{8,15}$');
     if (!phoneRegex.hasMatch(value.trim().replaceAll(' ', ''))) {
       return 'Enter a valid phone number';

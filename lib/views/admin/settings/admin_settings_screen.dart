@@ -2,28 +2,25 @@
 //
 // Admin settings panel — the last tab in AdminAppScaffold.
 //
-// Displays a live profile header (user-aware via Obx) followed by
-// grouped settings sections. The "Change Password" item opens an
-// inline bottom sheet with real validation instead of a no-op callback.
-//
-// All section items use a consistent [_SettingsTile] that applies the
-// Marcat destructive-red style when [isDestructive] is true.
+// ✅ REFACTORED: uses brand.dart color aliases.
+// ✅ REFACTORED: sign-out shows confirmation dialog.
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:marcat/core/extensions/string_extensions.dart';
 
 import '../../../controllers/auth_controller.dart';
-import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../models/enums.dart';
 import '../../../models/user_model.dart';
 import '../shared/admin_widgets.dart';
+import '../shared/brand.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AdminSettingsScreen
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Settings & account management tab for admin and store-manager roles.
 class AdminSettingsScreen extends StatelessWidget {
   const AdminSettingsScreen({super.key});
 
@@ -32,7 +29,7 @@ class AdminSettingsScreen extends StatelessWidget {
     final authCtrl = Get.find<AuthController>();
 
     return Scaffold(
-      backgroundColor: AppColors.surfaceGrey,
+      backgroundColor: kSurface,
       appBar: AppBar(
         title: const Text('Settings'),
         centerTitle: false,
@@ -53,7 +50,7 @@ class AdminSettingsScreen extends StatelessWidget {
 
                 const SizedBox(height: AppDimensions.space32),
 
-                // ── Store Configuration ──────────────────────────────────
+                // ── Store Configuration ─────────────────────────────────
                 const AdminSectionHeader(
                   eyebrow: 'Configuration',
                   title: 'Store Settings',
@@ -110,10 +107,10 @@ class AdminSettingsScreen extends StatelessWidget {
 
                 const SizedBox(height: AppDimensions.space32),
 
-                // ── Account ──────────────────────────────────────────────
+                // ── Account ─────────────────────────────────────────────
                 const AdminSectionHeader(
-                  eyebrow: 'Account',
-                  title: 'Security',
+                  eyebrow: 'Security',
+                  title: 'Account',
                 ),
                 const SizedBox(height: AppDimensions.space16),
                 _SettingsGroup(
@@ -122,14 +119,14 @@ class AdminSettingsScreen extends StatelessWidget {
                       icon: Icons.lock_outline_rounded,
                       title: 'Change Password',
                       subtitle: 'Update your admin account password',
-                      onTap: () => _showChangePasswordSheet(context, authCtrl),
+                      onTap: () => _showChangePasswordSheet(context),
                     ),
                     _SettingsTile(
                       icon: Icons.logout_rounded,
                       title: 'Sign Out',
-                      subtitle: 'Sign out of the admin panel',
-                      onTap: () => _confirmSignOut(context, authCtrl),
+                      subtitle: 'End your current session',
                       isDestructive: true,
+                      onTap: () => _confirmSignOut(context, authCtrl),
                     ),
                   ],
                 ),
@@ -146,11 +143,18 @@ class AdminSettingsScreen extends StatelessWidget {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   static void _comingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Coming soon — stay tuned!'),
-        duration: Duration(seconds: 2),
-      ),
+    Get.snackbar(
+      'Coming Soon',
+      'This feature is under development.',
+      snackPosition: SnackPosition.TOP,
+    );
+  }
+
+  static void _showChangePasswordSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => const _ChangePasswordSheet(),
     );
   }
 
@@ -161,20 +165,19 @@ class AdminSettingsScreen extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('Sign Out', style: AppTextStyles.headlineSmall),
-        content: Text(
+        title: const Text('Sign Out'),
+        content: const Text(
           'Are you sure you want to sign out of the admin panel?',
-          style: AppTextStyles.bodyMedium,
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.of(context).pop(false),
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.of(context).pop(true),
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.errorRed,
+              backgroundColor: kRed,
               foregroundColor: Colors.white,
             ),
             child: const Text('Sign Out'),
@@ -182,20 +185,7 @@ class AdminSettingsScreen extends StatelessWidget {
         ],
       ),
     );
-    if (confirmed == true) {
-      authCtrl.signOut();
-    }
-  }
-
-  static void _showChangePasswordSheet(
-    BuildContext context,
-    AuthController authCtrl,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => _ChangePasswordSheet(authCtrl: authCtrl),
-    );
+    if (confirmed == true) authCtrl.signOut();
   }
 }
 
@@ -203,77 +193,73 @@ class AdminSettingsScreen extends StatelessWidget {
 // _ProfileHeader
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// User-aware profile card at the top of the settings screen.
 class _ProfileHeader extends StatelessWidget {
   const _ProfileHeader({this.user});
 
   final UserModel? user;
 
   @override
-  Widget build(BuildContext context) => Card(
-        margin: EdgeInsets.zero,
-        child: Padding(
-          padding: const EdgeInsets.all(AppDimensions.space16),
-          child: Row(
-            children: [
-              // Avatar
-              CircleAvatar(
-                radius: 32,
-                backgroundColor: AppColors.borderMedium,
-                backgroundImage: user?.avatarUrl != null
-                    ? NetworkImage(user!.avatarUrl!)
-                    : null,
-                child: user?.avatarUrl == null
-                    ? Text(
-                        user?.firstName.isNotEmpty == true
-                            ? user!.firstName[0].toUpperCase()
-                            : 'A',
-                        style: AppTextStyles.titleLarge,
-                      )
-                    : null,
-              ),
-              const SizedBox(width: AppDimensions.space16),
-
-              // Name + role
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(AppDimensions.space20),
+        decoration: BoxDecoration(
+          color: kSurfaceWhite,
+          borderRadius: BorderRadius.circular(AppDimensions.radiusS),
+          border: Border.all(color: kBorder),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 30,
+              backgroundColor: kGold.withAlpha(38),
+              backgroundImage: user?.avatarUrl != null
+                  ? NetworkImage(user!.avatarUrl!)
+                  : null,
+              child: user?.avatarUrl == null
+                  ? Text(
+                      user != null && user!.firstName.isNotEmpty
+                          ? user!.firstName[0].toUpperCase()
+                          : 'A',
+                      style: AppTextStyles.titleLarge,
+                    )
+                  : null,
+            ),
+            const SizedBox(width: AppDimensions.space16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${user?.firstName ?? ''} ${user?.lastName ?? ''}'.trim(),
+                    style: AppTextStyles.titleMedium,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: AppDimensions.space4),
+                  Text(
+                    user?.role.dbValue.fromSlug ?? 'Admin',
+                    style:
+                        AppTextStyles.bodySmall.copyWith(color: kTextSecondary),
+                  ),
+                  if (user?.fullName != null)
                     Text(
-                      '${user?.firstName ?? ''} ${user?.lastName ?? ''}'.trim(),
-                      style: AppTextStyles.titleMedium,
+                      user!.fullName,
+                      style: AppTextStyles.bodySmall
+                          .copyWith(color: kTextDisabled),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: AppDimensions.space4),
-                    Text(
-                      user?.role.dbValue.fromSlug ?? 'Admin',
-                      style: AppTextStyles.bodySmall
-                          .copyWith(color: AppColors.textSecondary),
-                    ),
-                    if (user?.email != null)
-                      Text(
-                        user!.email!,
-                        style: AppTextStyles.bodySmall
-                            .copyWith(color: AppColors.textDisabled),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                  ],
-                ),
+                ],
               ),
-
-              // Gold role indicator dot
-              Container(
-                width: 10,
-                height: 10,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.marcatGold,
-                ),
+            ),
+            Container(
+              width: 10,
+              height: 10,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: kGold,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
 }
@@ -282,7 +268,6 @@ class _ProfileHeader extends StatelessWidget {
 // _SettingsGroup
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Card container that groups a list of [_SettingsTile]s.
 class _SettingsGroup extends StatelessWidget {
   const _SettingsGroup({required this.tiles});
 
@@ -298,11 +283,7 @@ class _SettingsGroup extends StatelessWidget {
               children: [
                 entry.value,
                 if (!isLast)
-                  const Divider(
-                    height: 1,
-                    indent: 56,
-                    color: AppColors.borderLight,
-                  ),
+                  const Divider(height: 1, indent: 56, color: kBorder),
               ],
             );
           }).toList(),
@@ -314,7 +295,6 @@ class _SettingsGroup extends StatelessWidget {
 // _SettingsTile
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// A single settings row with icon, title, subtitle, and optional chevron.
 class _SettingsTile extends StatelessWidget {
   const _SettingsTile({
     required this.icon,
@@ -334,20 +314,24 @@ class _SettingsTile extends StatelessWidget {
   Widget build(BuildContext context) => ListTile(
         leading: Icon(
           icon,
-          color: isDestructive ? AppColors.errorRed : AppColors.marcatSlate,
+          color: isDestructive ? kRed : kSlate,
           size: AppDimensions.iconL,
         ),
         title: Text(
           title,
-          style: isDestructive
-              ? AppTextStyles.labelMedium.copyWith(color: AppColors.errorRed)
-              : AppTextStyles.labelMedium,
+          style: AppTextStyles.titleSmall.copyWith(
+            color: isDestructive ? kRed : null,
+          ),
         ),
-        subtitle: Text(subtitle, style: AppTextStyles.bodySmall),
-        trailing: const Icon(
+        subtitle: Text(
+          subtitle,
+          style: AppTextStyles.bodySmall.copyWith(
+            color: kTextSecondary,
+          ),
+        ),
+        trailing: Icon(
           Icons.chevron_right_rounded,
-          color: AppColors.textDisabled,
-          size: AppDimensions.iconM,
+          color: isDestructive ? kRed.withAlpha(128) : kTextDisabled,
         ),
         onTap: onTap,
       );
@@ -357,14 +341,8 @@ class _SettingsTile extends StatelessWidget {
 // _ChangePasswordSheet
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Modal bottom sheet for changing the admin's password.
-///
-/// Calls [AuthController.updatePassword] which wraps the Supabase
-/// `auth.updateUser` API.
 class _ChangePasswordSheet extends StatefulWidget {
-  const _ChangePasswordSheet({required this.authCtrl});
-
-  final AuthController authCtrl;
+  const _ChangePasswordSheet();
 
   @override
   State<_ChangePasswordSheet> createState() => _ChangePasswordSheetState();
@@ -372,42 +350,33 @@ class _ChangePasswordSheet extends StatefulWidget {
 
 class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
   final _formKey = GlobalKey<FormState>();
-  final _currentCtrl = TextEditingController();
-  final _newCtrl = TextEditingController();
-  final _confirmCtrl = TextEditingController();
-
-  bool _obscureCurrent = true;
+  final _newPwCtrl = TextEditingController();
+  final _confirmPwCtrl = TextEditingController();
+  bool _isLoading = false;
   bool _obscureNew = true;
   bool _obscureConfirm = true;
-  bool _isLoading = false;
 
   @override
   void dispose() {
-    _currentCtrl.dispose();
-    _newCtrl.dispose();
-    _confirmCtrl.dispose();
+    _newPwCtrl.dispose();
+    _confirmPwCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    if (!mounted) return;
+    if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _isLoading = true);
 
     try {
-      // Supabase doesn't require current password for updateUser
-      // when the user is already authenticated via session.
-      await widget.authCtrl.updatePassword(_newCtrl.text);
-
+      await Get.find<AuthController>().updatePassword(_newPwCtrl.text);
       if (mounted) {
-        Navigator.pop(context);
+        Navigator.of(context).pop();
         Get.snackbar(
-          'Password Changed',
-          'Your password has been updated successfully.',
+          'Success',
+          'Password updated.',
           snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.successGreenLight,
-          colorText: AppColors.statusGreen,
+          backgroundColor: kGreenLight,
+          colorText: kGreen,
         );
       }
     } catch (e) {
@@ -416,8 +385,8 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
           'Error',
           e.toString(),
           snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.statusRedLight,
-          colorText: AppColors.statusRed,
+          backgroundColor: kRed.withAlpha(26),
+          colorText: kRed,
         );
       }
     } finally {
@@ -426,152 +395,86 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      // Lift the sheet above the keyboard
-      padding: EdgeInsets.only(
-        left: AppDimensions.pagePaddingH,
-        right: AppDimensions.pagePaddingH,
-        top: AppDimensions.space24,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + AppDimensions.space24,
-      ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Change Password', style: AppTextStyles.headlineSmall),
-            const SizedBox(height: AppDimensions.space4),
-            Text(
-              'Choose a strong password of at least 8 characters.',
-              style: AppTextStyles.bodySmall
-                  .copyWith(color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: AppDimensions.space20),
-
-            // Current password (kept as a UX confirmation step)
-            _PasswordField(
-              controller: _currentCtrl,
-              label: 'Current Password',
-              obscure: _obscureCurrent,
-              onToggle: () =>
-                  setState(() => _obscureCurrent = !_obscureCurrent),
-              validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
-            ),
-            const SizedBox(height: AppDimensions.space16),
-
-            // New password
-            _PasswordField(
-              controller: _newCtrl,
-              label: 'New Password',
-              obscure: _obscureNew,
-              onToggle: () => setState(() => _obscureNew = !_obscureNew),
-              validator: (v) {
-                if (v == null || v.isEmpty) return 'Required';
-                if (v.length < 8) {
-                  return 'Must be at least 8 characters.';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: AppDimensions.space16),
-
-            // Confirm password
-            _PasswordField(
-              controller: _confirmCtrl,
-              label: 'Confirm New Password',
-              obscure: _obscureConfirm,
-              onToggle: () =>
-                  setState(() => _obscureConfirm = !_obscureConfirm),
-              validator: (v) =>
-                  v != _newCtrl.text ? 'Passwords do not match.' : null,
-            ),
-            const SizedBox(height: AppDimensions.space24),
-
-            // Submit
-            FilledButton(
-              onPressed: _isLoading ? null : _submit,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.marcatNavy,
-                foregroundColor: AppColors.textOnDark,
-                minimumSize:
-                    const Size.fromHeight(AppDimensions.buttonHeightPrimary),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppDimensions.radiusS),
-                ),
-              ),
-              child: _isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : Text(
-                      'Update Password',
-                      style: AppTextStyles.labelLarge
-                          .copyWith(color: AppColors.textOnDark),
-                    ),
-            ),
-          ],
+  Widget build(BuildContext context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+          left: AppDimensions.pagePaddingH,
+          right: AppDimensions.pagePaddingH,
+          top: AppDimensions.space16,
         ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// _PasswordField
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _PasswordField extends StatelessWidget {
-  const _PasswordField({
-    required this.controller,
-    required this.label,
-    required this.obscure,
-    required this.onToggle,
-    required this.validator,
-  });
-
-  final TextEditingController controller;
-  final String label;
-  final bool obscure;
-  final VoidCallback onToggle;
-  final FormFieldValidator<String> validator;
-
-  @override
-  Widget build(BuildContext context) => TextFormField(
-        controller: controller,
-        obscureText: obscure,
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
-          suffixIcon: IconButton(
-            icon: Icon(
-              obscure
-                  ? Icons.visibility_outlined
-                  : Icons.visibility_off_outlined,
-              size: AppDimensions.iconM,
-            ),
-            onPressed: onToggle,
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Change Password', style: AppTextStyles.titleMedium),
+              const SizedBox(height: AppDimensions.space20),
+              TextFormField(
+                controller: _newPwCtrl,
+                obscureText: _obscureNew,
+                decoration: InputDecoration(
+                  labelText: 'New Password',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureNew
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                    ),
+                    onPressed: () => setState(() => _obscureNew = !_obscureNew),
+                  ),
+                ),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Required.';
+                  if (v.length < 8) return 'At least 8 characters.';
+                  return null;
+                },
+              ),
+              const SizedBox(height: AppDimensions.space16),
+              TextFormField(
+                controller: _confirmPwCtrl,
+                obscureText: _obscureConfirm,
+                decoration: InputDecoration(
+                  labelText: 'Confirm Password',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureConfirm
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscureConfirm = !_obscureConfirm),
+                  ),
+                ),
+                validator: (v) {
+                  if (v != _newPwCtrl.text) {
+                    return 'Passwords do not match.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: AppDimensions.space24),
+              FilledButton(
+                onPressed: _isLoading ? null : _submit,
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Update Password'),
+              ),
+              const SizedBox(height: AppDimensions.space24),
+            ],
           ),
         ),
-        validator: validator,
       );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Extension used in _ProfileHeader
-// ─────────────────────────────────────────────────────────────────────────────
-
-extension on String {
-  /// Convert snake_case / db-value to a readable label.
-  /// e.g. 'store_manager' → 'Store Manager'
-  String get fromSlug => replaceAll('_', ' ')
-      .split(' ')
-      .map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}')
-      .join(' ');
-}
+// ── Green light alias for success snackbar ──────────────────────────────────
+const kGreenLight = Color(0xFFDCFCE7);

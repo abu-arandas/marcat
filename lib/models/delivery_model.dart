@@ -1,4 +1,4 @@
-// lib/data/models/delivery_model.dart
+// lib/models/delivery_model.dart
 //
 // Mirrors public.deliveries
 // ┌─────────────────┬─────────────────────────────────────────────┬──────────┐

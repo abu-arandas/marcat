@@ -95,7 +95,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       _priceCtrl.text = product.basePrice.toStringAsFixed(2);
       _descCtrl.text = product.description ?? '';
       setState(() {
-        _status = ProductStatusX.fromDb(product.status?.toString());
+        _status = ProductStatusX.fromDb(product.status.toString());
         _selectedCategoryId = product.categoryId;
         _selectedBrandId = product.brandId;
         _isPrefilling = false;

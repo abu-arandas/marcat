@@ -1,4 +1,4 @@
-// lib/data/models/store_model.dart
+// lib/models/store_model.dart
 //
 // Mirrors public.stores
 // ┌─────────────┬─────────────┬──────────┐

@@ -1,4 +1,4 @@
-// lib/data/models/sale_model.dart
+// lib/models/sale_model.dart
 //
 // Mirrors public.sales  (covers both online orders and POS tickets)
 // ┌──────────────────────┬─────────────────────────────────────────────┬──────────┐

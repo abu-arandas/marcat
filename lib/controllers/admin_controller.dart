@@ -118,7 +118,7 @@ class AdminController extends GetxController {
   }) async {
     try {
       final result = await _client.rpc(
-        'verify_pos_pin',
+        SupabaseConstants.rpcVerifyPosPin,
         params: {'p_staff_id': staffId, 'p_pin': pin},
       );
       return result as bool? ?? false;

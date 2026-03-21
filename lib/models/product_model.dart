@@ -1,4 +1,4 @@
-// lib/data/models/product_model.dart
+// lib/models/product_model.dart
 //
 // Mirrors public.products
 // ┌───────────────────┬────────────────────────────────────┬──────────┐

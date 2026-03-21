@@ -1,4 +1,4 @@
-// lib/data/models/user_model.dart
+// lib/models/user_model.dart
 //
 // Mirrors public.profiles  (extends auth.users via FK on id)
 // ┌─────────────┬─────────────────────────────────────────┬──────────┐

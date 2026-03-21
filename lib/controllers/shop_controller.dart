@@ -112,6 +112,7 @@ class ShopController extends GetxController {
         minPrice: minPrice.value,
         maxPrice: maxPrice.value,
         query: searchQuery.value.isNotEmpty ? searchQuery.value : null,
+        updateState: false, // prevent clobbering ProductController's shared lists
       );
 
       if (fetched.$1.length < _pageSize) {

@@ -111,7 +111,7 @@ class DialogUtils {
     String cancelLabel = 'Cancel',
   }) async {
     final controller = TextEditingController();
-    return showDialog<String>(
+    final result = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(title),
@@ -132,5 +132,7 @@ class DialogUtils {
         ],
       ),
     );
+    controller.dispose();
+    return result;
   }
 }

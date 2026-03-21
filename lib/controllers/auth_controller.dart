@@ -1,5 +1,6 @@
 // lib/controllers/auth_controller.dart
 
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
@@ -82,6 +83,9 @@ class AuthController extends GetxController {
   String? get currentUserId => _client.auth.currentUser?.id;
   sb.User? get currentAuthUser => _client.auth.currentUser;
 
+  // ── Auth listener subscription ───────────────────────────────────────────────
+  StreamSubscription<sb.AuthState>? _authSub;
+
   // ── Lifecycle ───────────────────────────────────────────────────────────────
   @override
   void onInit() {
@@ -89,10 +93,16 @@ class AuthController extends GetxController {
     _subscribeToAuthChanges();
   }
 
+  @override
+  void onClose() {
+    _authSub?.cancel();
+    super.onClose();
+  }
+
   // ── Auth state listener ──────────────────────────────────────────────────────
 
   void _subscribeToAuthChanges() {
-    _client.auth.onAuthStateChange.listen((event) async {
+    _authSub = _client.auth.onAuthStateChange.listen((event) async {
       switch (event.event) {
         case sb.AuthChangeEvent.signedIn:
         case sb.AuthChangeEvent.tokenRefreshed:
